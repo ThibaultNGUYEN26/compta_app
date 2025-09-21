@@ -85,6 +85,8 @@ class App:
         self.montant_var = StringVar()
         self.amount_validator = self.root.register(self._validate_amount)
         self.transaction_is_entry = False
+        self.transaction_container = None
+        self.montant_container = None
 
         self.header_frame = Frame(self.root, bg=LIGHT_THEME["bg"])
         self.header_frame.pack(fill="x", padx=40, pady=(20, 0))
@@ -98,7 +100,7 @@ class App:
             bg=LIGHT_THEME["bg"],
             activebackground=LIGHT_THEME["bg"],
         )
-        self.toggle_button.pack(side="right")
+        self.toggle_button.pack(anchor="center", pady=(0, 10))
 
         self.entry_frame = Frame(self.root, bg=LIGHT_THEME["bg"])
         self.entry_frame.pack(expand=True, fill="x", padx=40, pady=20)
@@ -136,7 +138,8 @@ class App:
                 self.category_combobox = combobox
             elif name == "Montant":
                 montant_container = Frame(column, bg=LIGHT_THEME["bg"])
-                montant_container.pack(expand=True, fill="both", pady=(4, 8))
+                montant_container.pack(expand=True, fill="x", pady=(4, 8))
+                self.montant_container = montant_container
 
                 entry = Entry(
                     montant_container,
@@ -153,7 +156,19 @@ class App:
                 self.entries.append(entry)
 
                 toggle_container = Frame(montant_container, bg=LIGHT_THEME["bg"])
-                toggle_container.pack(fill="x", pady=(6, 0))
+                toggle_container.pack(anchor="center", pady=(6, 0))
+                self.transaction_container = toggle_container
+
+                self.transaction_label = Label(
+                    toggle_container,
+                    text="Sortie",
+                    bg=LIGHT_THEME["bg"],
+                    fg=LIGHT_THEME["fg"],
+                    font=self.label_font,
+                )
+                self.transaction_label.pack(side="left", padx=(0, 6))
+                self.transaction_label.bind("<Button-1>", self._on_transaction_toggle)
+                self.labels.append(self.transaction_label)
 
                 self.transaction_canvas = Canvas(
                     toggle_container,
@@ -164,19 +179,8 @@ class App:
                     relief="flat",
                     bg=LIGHT_THEME["bg"],
                 )
-                self.transaction_canvas.pack(side="right", padx=(10, 0))
+                self.transaction_canvas.pack(side="left", padx=(8, 0))
                 self.transaction_canvas.bind("<Button-1>", self._on_transaction_toggle)
-
-                self.transaction_label = Label(
-                    toggle_container,
-                    text="Sortie",
-                    bg=LIGHT_THEME["bg"],
-                    fg=LIGHT_THEME["fg"],
-                    font=self.label_font,
-                )
-                self.transaction_label.pack(side="right")
-                self.transaction_label.bind("<Button-1>", self._on_transaction_toggle)
-                self.labels.append(self.transaction_label)
             else:
                 entry = Entry(
                     column,
@@ -242,6 +246,10 @@ class App:
             )
             self.category_combobox.configure(style=self.combobox_style)
             self._clear_category_selection()
+        if self.montant_container is not None:
+            self.montant_container.configure(bg=theme["bg"])
+        if self.transaction_container is not None:
+            self.transaction_container.configure(bg=theme["bg"])
         if hasattr(self, "transaction_canvas"):
             self.transaction_canvas.configure(bg=theme["bg"])
         self._render_transaction_toggle(theme)
