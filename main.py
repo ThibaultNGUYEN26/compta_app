@@ -30,7 +30,7 @@ LIGHT_THEME = {
     "entry_bg": "#ffffff",
     "entry_fg": "#333333",
     "entry_border": "#cccccc",
-    "toggle_track": "#d0d0d0",
+        "toggle_track": "#d32f2f",
     "toggle_track_active": "#4caf50",
     "toggle_thumb": "#ffffff",
 }
@@ -41,9 +41,9 @@ DARK_THEME = {
     "entry_bg": "#3a3a3a",
     "entry_fg": "#f0f0f0",
     "entry_border": "#5a5a5a",
-    "toggle_track": "#555555",
+        "toggle_track": "#b71c1c",
     "toggle_track_active": "#66bb6a",
-    "toggle_thumb": "#e0e0e0",
+    "toggle_thumb": "#1e0303",
 }
 
 
@@ -60,6 +60,14 @@ class App:
         asset_dir = Path(__file__).resolve().parent / "src"
         dark_icon = PhotoImage(master=self.root, file=str(asset_dir / "dark_mode_icon.png"))
         light_icon = PhotoImage(master=self.root, file=str(asset_dir / "light_mode_icon.png"))
+        # Application window icon
+        try:
+            self.app_icon = PhotoImage(master=self.root, file=str(asset_dir / "compta_app_logo.png"))
+            # Set the main window icon (works on Windows/Linux; on macOS affects the title bar icon)
+            self.root.iconphoto(True, self.app_icon)
+        except Exception:
+            # Silently ignore if icon cannot be loaded; app still functions
+            self.app_icon = None
         self.dark_mode_icon = dark_icon.subsample(ICON_SUBSAMPLE, ICON_SUBSAMPLE)
         self.light_mode_icon = light_icon.subsample(ICON_SUBSAMPLE, ICON_SUBSAMPLE)
 
