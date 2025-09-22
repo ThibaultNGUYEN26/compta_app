@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from tkinter import Button, Canvas, Entry, Frame, Label, PhotoImage, StringVar, Tk, TclError
 from tkinter import ttk
 from tkinter import font as tkfont
@@ -60,7 +60,6 @@ class App:
         asset_dir = Path(__file__).resolve().parent / "src"
         dark_icon = PhotoImage(master=self.root, file=str(asset_dir / "dark_mode_icon.png"))
         light_icon = PhotoImage(master=self.root, file=str(asset_dir / "light_mode_icon.png"))
-
         self.dark_mode_icon = dark_icon.subsample(ICON_SUBSAMPLE, ICON_SUBSAMPLE)
         self.light_mode_icon = light_icon.subsample(ICON_SUBSAMPLE, ICON_SUBSAMPLE)
 
@@ -79,17 +78,15 @@ class App:
 
         self.labels = []
         self.entries = []
-        self.columns = []
         self.category_var = StringVar()
         self.category_combobox = None
         self.montant_var = StringVar()
         self.amount_validator = self.root.register(self._validate_amount)
         self.transaction_is_entry = False
         self.transaction_container = None
-        self.montant_container = None
 
         self.header_frame = Frame(self.root, bg=LIGHT_THEME["bg"])
-        self.header_frame.pack(fill="x", padx=40, pady=(20, 0))
+        self.header_frame.pack(fill="x")
 
         self.toggle_button = Button(
             self.header_frame,
@@ -99,123 +96,126 @@ class App:
             relief="flat",
             bg=LIGHT_THEME["bg"],
             activebackground=LIGHT_THEME["bg"],
+            image=self.dark_mode_icon,
         )
-        self.toggle_button.pack(anchor="center", pady=(0, 10))
+        self.toggle_button.pack(side="right", padx=12, pady=8)
 
-        self.entry_frame = Frame(self.root, bg=LIGHT_THEME["bg"])
-        self.entry_frame.pack(expand=True, fill="x", padx=40, pady=20)
+        self.body = Frame(self.root, bg=LIGHT_THEME["bg"])
+        self.body.pack(expand=True, fill="both", padx=40, pady=10)
 
-        for name in ENTRY_NAMES:
-            column = Frame(self.entry_frame, bg=LIGHT_THEME["bg"])
-            column.pack(side="left", expand=True, fill="x", padx=10)
-            self.columns.append(column)
+        self.body.grid_rowconfigure(0, weight=1)
+        self.body.grid_rowconfigure(1, weight=0)
+        self.body.grid_rowconfigure(2, weight=1)
+        self.body.grid_columnconfigure(0, weight=1)
 
-            label = Label(
-                column,
+        self.entry_frame = Frame(self.body, bg=LIGHT_THEME["bg"])
+        self.entry_frame.grid(row=1, column=0)
+
+        for i in range(3):
+            self.entry_frame.columnconfigure(i, weight=1, uniform="col")
+
+        for col, name in enumerate(ENTRY_NAMES):
+            lbl = Label(
+                self.entry_frame,
                 text=name,
                 anchor="center",
-                pady=4,
+                pady=0,
                 bg=LIGHT_THEME["bg"],
                 fg=LIGHT_THEME["fg"],
                 font=self.label_font,
             )
-            label.pack(fill="x")
-            self.labels.append(label)
+            lbl.grid(row=0, column=col, sticky="ew", padx=10, pady=(0, 4))
+            self.labels.append(lbl)
 
-            if name == "Catégorie":
-                combobox = ttk.Combobox(
-                    column,
-                    textvariable=self.category_var,
-                    values=CATEGORY_VALUES,
-                    state="readonly",
-                    style=self.combobox_style,
-                    exportselection=False,
-                )
-                combobox.pack(expand=True, fill="x", pady=(4, 8))
-                combobox.configure(font=self.entry_font)
-                combobox.bind("<<ComboboxSelected>>", self._clear_category_selection)
-                combobox.bind("<FocusOut>", self._clear_category_selection)
-                self.category_combobox = combobox
-            elif name == "Montant":
-                montant_container = Frame(column, bg=LIGHT_THEME["bg"])
-                montant_container.pack(expand=True, fill="x", pady=(4, 8))
-                self.montant_container = montant_container
+        date_entry = Entry(
+            self.entry_frame,
+            justify="center",
+            relief="flat",
+            highlightthickness=1,
+            font=self.entry_font,
+            exportselection=False,
+        )
+        date_entry.grid(row=1, column=0, sticky="new", padx=10, pady=(0, 8), ipady=4)
+        self.entries.append(date_entry)
 
-                entry = Entry(
-                    montant_container,
-                    textvariable=self.montant_var,
-                    justify="center",
-                    relief="flat",
-                    highlightthickness=1,
-                    font=self.entry_font,
-                    exportselection=False,
-                    validate="key",
-                    validatecommand=(self.amount_validator, "%P"),
-                )
-                entry.pack(expand=True, fill="x", ipady=4)
-                self.entries.append(entry)
+        montant_entry = Entry(
+            self.entry_frame,
+            textvariable=self.montant_var,
+            justify="center",
+            relief="flat",
+            highlightthickness=1,
+            font=self.entry_font,
+            exportselection=False,
+            validate="key",
+            validatecommand=(self.amount_validator, "%P"),
+        )
+        montant_entry.grid(row=1, column=1, sticky="new", padx=10, pady=(0, 8), ipady=4)
+        self.entries.append(montant_entry)
 
-                toggle_container = Frame(montant_container, bg=LIGHT_THEME["bg"])
-                toggle_container.pack(anchor="center", pady=(6, 0))
-                self.transaction_container = toggle_container
+        self.category_combobox = ttk.Combobox(
+            self.entry_frame,
+            textvariable=self.category_var,
+            values=CATEGORY_VALUES,
+            state="readonly",
+            style=self.combobox_style,
+            exportselection=False,
+        )
+        self.category_combobox.grid(row=1, column=2, sticky="new", padx=10, pady=(0, 8), ipady=3)
+        self.category_combobox.configure(font=self.entry_font)
+        self.category_combobox.bind("<<ComboboxSelected>>", self._clear_category_selection)
+        self.category_combobox.bind("<FocusOut>", self._clear_category_selection)
 
-                self.transaction_label = Label(
-                    toggle_container,
-                    text="Sortie",
-                    bg=LIGHT_THEME["bg"],
-                    fg=LIGHT_THEME["fg"],
-                    font=self.label_font,
-                )
-                self.transaction_label.pack(side="left", padx=(0, 6))
-                self.transaction_label.bind("<Button-1>", self._on_transaction_toggle)
-                self.labels.append(self.transaction_label)
+        self.transaction_container = Frame(self.entry_frame, bg=LIGHT_THEME["bg"])
+        self.transaction_container.grid(row=2, column=1, pady=(2, 0))
 
-                self.transaction_canvas = Canvas(
-                    toggle_container,
-                    width=54,
-                    height=28,
-                    bd=0,
-                    highlightthickness=0,
-                    relief="flat",
-                    bg=LIGHT_THEME["bg"],
-                )
-                self.transaction_canvas.pack(side="left", padx=(8, 0))
-                self.transaction_canvas.bind("<Button-1>", self._on_transaction_toggle)
-            else:
-                entry = Entry(
-                    column,
-                    justify="center",
-                    relief="flat",
-                    highlightthickness=1,
-                    font=self.entry_font,
-                    exportselection=False,
-                )
-                entry.pack(expand=True, fill="x", pady=(4, 8), ipady=4)
-                self.entries.append(entry)
+        self.transaction_label = Label(
+            self.transaction_container,
+            text="Sortie",
+            bg=LIGHT_THEME["bg"],
+            fg=LIGHT_THEME["fg"],
+            font=self.label_font,
+        )
+        self.transaction_label.pack(side="left", padx=(0, 6))
+        self.transaction_label.bind("<Button-1>", self._on_transaction_toggle)
+        self.labels.append(self.transaction_label)
 
-        self.toggle_button.configure(image=self.dark_mode_icon)
+        self.transaction_canvas = Canvas(
+            self.transaction_container,
+            width=54,
+            height=28,
+            bd=0,
+            highlightthickness=0,
+            relief="flat",
+            bg=LIGHT_THEME["bg"],
+        )
+        self.transaction_canvas.pack(side="left", padx=(8, 0))
+        self.transaction_canvas.bind("<Button-1>", self._on_transaction_toggle)
 
         self.apply_theme()
         self._update_fonts()
         self._clear_category_selection()
         self._render_transaction_toggle(LIGHT_THEME)
+
         self.root.bind("<Configure>", self._on_resize)
 
     def apply_theme(self):
         theme = DARK_THEME if self.is_dark_mode else LIGHT_THEME
         self.current_theme = theme
+
         self.root.configure(bg=theme["bg"])
         self.header_frame.configure(bg=theme["bg"])
+        self.body.configure(bg=theme["bg"])
+        self.entry_frame.configure(bg=theme["bg"])
+
         self.toggle_button.configure(
             image=self.light_mode_icon if self.is_dark_mode else self.dark_mode_icon,
             bg=theme["bg"],
             activebackground=theme["bg"],
         )
-        self.entry_frame.configure(bg=theme["bg"])
-        for column in self.columns:
-            column.configure(bg=theme["bg"])
+
         for label in self.labels:
             label.configure(bg=theme["bg"], fg=theme["fg"])
+
         for entry in self.entries:
             entry.configure(
                 bg=theme["entry_bg"],
@@ -224,6 +224,7 @@ class App:
                 highlightbackground=theme["entry_border"],
                 highlightcolor=theme["entry_border"],
             )
+
         if self.category_combobox is not None:
             self.style.configure(
                 self.combobox_style,
@@ -246,12 +247,12 @@ class App:
             )
             self.category_combobox.configure(style=self.combobox_style)
             self._clear_category_selection()
-        if self.montant_container is not None:
-            self.montant_container.configure(bg=theme["bg"])
+
         if self.transaction_container is not None:
             self.transaction_container.configure(bg=theme["bg"])
         if hasattr(self, "transaction_canvas"):
             self.transaction_canvas.configure(bg=theme["bg"])
+
         self._render_transaction_toggle(theme)
 
     def _clear_category_selection(self, *_):
