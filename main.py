@@ -1,5 +1,18 @@
 from pathlib import Path
-from tkinter import Button, Canvas, Entry, Frame, Label, PhotoImage, StringVar, Tk, TclError
+from datetime import date, datetime
+import calendar as _calendar
+from tkinter import (
+    Button,
+    Canvas,
+    Entry,
+    Frame,
+    Label,
+    PhotoImage,
+    StringVar,
+    Tk,
+    TclError,
+    Toplevel,
+)
 from tkinter import ttk
 from tkinter import font as tkfont
 
@@ -30,7 +43,7 @@ LIGHT_THEME = {
     "entry_bg": "#ffffff",
     "entry_fg": "#333333",
     "entry_border": "#cccccc",
-        "toggle_track": "#d32f2f",
+    "toggle_track": "#d32f2f",
     "toggle_track_active": "#4caf50",
     "toggle_thumb": "#ffffff",
 }
@@ -41,7 +54,7 @@ DARK_THEME = {
     "entry_bg": "#3a3a3a",
     "entry_fg": "#f0f0f0",
     "entry_border": "#5a5a5a",
-        "toggle_track": "#b71c1c",
+    "toggle_track": "#b71c1c",
     "toggle_track_active": "#66bb6a",
     "toggle_thumb": "#1e0303",
 }
@@ -60,13 +73,10 @@ class App:
         asset_dir = Path(__file__).resolve().parent / "src"
         dark_icon = PhotoImage(master=self.root, file=str(asset_dir / "dark_mode_icon.png"))
         light_icon = PhotoImage(master=self.root, file=str(asset_dir / "light_mode_icon.png"))
-        # Application window icon
         try:
             self.app_icon = PhotoImage(master=self.root, file=str(asset_dir / "compta_app_logo.png"))
-            # Set the main window icon (works on Windows/Linux; on macOS affects the title bar icon)
             self.root.iconphoto(True, self.app_icon)
         except Exception:
-            # Silently ignore if icon cannot be loaded; app still functions
             self.app_icon = None
         self.dark_mode_icon = dark_icon.subsample(ICON_SUBSAMPLE, ICON_SUBSAMPLE)
         self.light_mode_icon = light_icon.subsample(ICON_SUBSAMPLE, ICON_SUBSAMPLE)
@@ -92,6 +102,12 @@ class App:
         self.amount_validator = self.root.register(self._validate_amount)
         self.transaction_is_entry = False
         self.transaction_container = None
+        self.date_var = StringVar(value=date.today().strftime("%d-%m-%Y"))
+        self.date_entry = None
+        self.date_button = None
+        self.calendar_win = None
+        self._calendar_year = date.today().year
+        self._calendar_month = date.today().month
 
         self.header_frame = Frame(self.root, bg=LIGHT_THEME["bg"])
         self.header_frame.pack(fill="x")
@@ -135,16 +151,31 @@ class App:
             lbl.grid(row=0, column=col, sticky="ew", padx=10, pady=(0, 4))
             self.labels.append(lbl)
 
-        date_entry = Entry(
-            self.entry_frame,
+        date_frame = Frame(self.entry_frame, bg=LIGHT_THEME["bg"])
+        date_frame.grid(row=1, column=0, sticky="new", padx=10, pady=(0, 8))
+        self.date_entry = Entry(
+            date_frame,
+            textvariable=self.date_var,
             justify="center",
             relief="flat",
             highlightthickness=1,
             font=self.entry_font,
             exportselection=False,
         )
-        date_entry.grid(row=1, column=0, sticky="new", padx=10, pady=(0, 8), ipady=4)
-        self.entries.append(date_entry)
+        self.date_entry.pack(side="left", fill="x", expand=True, ipady=4)
+        self.entries.append(self.date_entry)
+        self.date_button = Button(
+            date_frame,
+            text="📅",
+            command=self._open_calendar,
+            relief="flat",
+            borderwidth=0,
+            padx=6,
+            pady=2,
+            bg=LIGHT_THEME["bg"],
+            activebackground=LIGHT_THEME["bg"],
+        )
+        self.date_button.pack(side="left", padx=(4, 0))
 
         montant_entry = Entry(
             self.entry_frame,
@@ -205,6 +236,7 @@ class App:
         self._render_transaction_toggle(LIGHT_THEME)
 
         self.root.bind("<Configure>", self._on_resize)
+        self.root.bind("<Button-1>", self._maybe_close_calendar, add="+")
 
     def apply_theme(self):
         theme = DARK_THEME if self.is_dark_mode else LIGHT_THEME
@@ -232,6 +264,12 @@ class App:
                 highlightbackground=theme["entry_border"],
                 highlightcolor=theme["entry_border"],
             )
+        if self.date_button is not None:
+            self.date_button.configure(bg=theme["bg"], activebackground=theme["bg"], fg=theme["fg"])
+            if self.date_entry is not None:
+                parent = self.date_entry.master
+                if isinstance(parent, Frame):
+                    parent.configure(bg=theme["bg"])
 
         if self.category_combobox is not None:
             self.style.configure(
@@ -262,6 +300,7 @@ class App:
             self.transaction_canvas.configure(bg=theme["bg"])
 
         self._render_transaction_toggle(theme)
+        self._refresh_calendar_theme()
 
     def _clear_category_selection(self, *_):
         if self.category_combobox is not None:
@@ -335,10 +374,177 @@ class App:
             self.style.configure(self.combobox_style, font=self.entry_font)
             self._clear_category_selection()
         self._render_transaction_toggle(self.current_theme)
+        if self.calendar_win is not None:
+            self._build_calendar_body()
 
     def toggle_theme(self):
         self.is_dark_mode = not self.is_dark_mode
         self.apply_theme()
+
+    def _open_calendar(self):
+        if self.calendar_win is not None and self.calendar_win.winfo_exists():
+            self.calendar_win.lift()
+            return
+        self.calendar_win = Toplevel(self.root)
+        self.calendar_win.overrideredirect(True)
+        self.calendar_win.transient(self.root)
+        self.calendar_win.attributes("-topmost", True)
+        self._sync_calendar_to_entry()
+        self._position_calendar()
+        self._build_calendar_header()
+        self._build_calendar_body()
+        self._refresh_calendar_theme()
+        try:
+            self.calendar_win.grab_set()
+        except Exception:
+            pass
+        self.calendar_win.bind("<Escape>", lambda e: self._close_calendar())
+
+    def _position_calendar(self):
+        if self.date_entry is None:
+            return
+        x = self.date_entry.winfo_rootx()
+        y = self.date_entry.winfo_rooty() + self.date_entry.winfo_height()
+        self.calendar_win.geometry(f"260x250+{x}+{y}")
+
+    def _build_calendar_header(self):
+        for child in self.calendar_win.winfo_children():
+            child.destroy()
+        header = Frame(self.calendar_win)
+        header.pack(fill="x", pady=4)
+        prev_btn = Button(header, text="◀", width=2, command=self._prev_month, relief="flat", borderwidth=0)
+        prev_btn.pack(side="left", padx=4)
+        next_btn = Button(header, text="▶", width=2, command=self._next_month, relief="flat", borderwidth=0)
+        next_btn.pack(side="right", padx=4)
+        month_label = Label(
+            header,
+            text=f"{_calendar.month_name[self._calendar_month]} {self._calendar_year}",
+            anchor="center",
+        )
+        month_label.pack(fill="x")
+        self._calendar_header_widgets = (header, prev_btn, next_btn, month_label)
+
+    def _build_calendar_body(self):
+        existing = getattr(self, "_calendar_day_frame", None)
+        if existing and existing.winfo_exists():
+            existing.destroy()
+        day_frame = Frame(self.calendar_win)
+        day_frame.pack(fill="both", expand=True, padx=6, pady=(0, 6))
+        self._calendar_day_frame = day_frame
+
+        for idx, wd in enumerate(["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]):
+            lbl = Label(day_frame, text=wd, anchor="center")
+            lbl.grid(row=0, column=idx, padx=2, pady=2, sticky="nsew")
+
+        for c in range(7):
+            day_frame.grid_columnconfigure(c, weight=1, uniform="day")
+
+        first_wd, days_in_month = _calendar.monthrange(self._calendar_year, self._calendar_month)
+        row = 1
+        col = first_wd
+        today_obj = date.today()
+
+        for d in range(1, days_in_month + 1):
+            current_date = date(self._calendar_year, self._calendar_month, d)
+            ds_display = current_date.strftime("%d-%m-%Y")
+            is_today = current_date == today_obj
+            btn = Button(
+                day_frame,
+                text=str(d),
+                width=2,
+                relief="flat",
+                borderwidth=0,
+                command=lambda ds=ds_display: self._select_date(ds),
+            )
+            btn.grid(row=row, column=col, padx=1, pady=1, sticky="nsew")
+            if is_today:
+                btn._is_today = True
+            col += 1
+            if col > 6:
+                col = 0
+                row += 1
+
+        for r in range(row + 1):
+            day_frame.grid_rowconfigure(r, weight=1)
+
+    def _select_date(self, ds: str):
+        self.date_var.set(ds)
+        self._close_calendar()
+
+    def _sync_calendar_to_entry(self):
+        value = self.date_var.get().strip()
+        try:
+            dt = datetime.strptime(value, "%d-%m-%Y")
+            self._calendar_year = dt.year
+            self._calendar_month = dt.month
+        except Exception:
+            pass
+
+    def _prev_month(self):
+        if self._calendar_month == 1:
+            self._calendar_month = 12
+            self._calendar_year -= 1
+        else:
+            self._calendar_month -= 1
+        self._build_calendar_header()
+        self._build_calendar_body()
+        self._refresh_calendar_theme()
+
+    def _next_month(self):
+        if self._calendar_month == 12:
+            self._calendar_month = 1
+            self._calendar_year += 1
+        else:
+            self._calendar_month += 1
+        self._build_calendar_header()
+        self._build_calendar_body()
+        self._refresh_calendar_theme()
+
+    def _refresh_calendar_theme(self):
+        if self.calendar_win is None or not self.calendar_win.winfo_exists():
+            return
+        theme = self.current_theme
+        self.calendar_win.configure(bg=theme["bg"])
+        header_widgets = getattr(self, "_calendar_header_widgets", ())
+        for w in header_widgets:
+            try:
+                w.configure(bg=theme["bg"], fg=theme.get("fg", "#000"))
+            except Exception:
+                pass
+        day_frame = getattr(self, "_calendar_day_frame", None)
+        if day_frame is not None:
+            day_frame.configure(bg=theme["bg"])
+            for child in day_frame.winfo_children():
+                cfg = {"bg": theme["bg"], "fg": theme["fg"]}
+                if isinstance(child, Button):
+                    if getattr(child, "_is_today", False):
+                        cfg["bg"] = theme["toggle_track_active"]
+                        cfg["fg"] = theme["toggle_thumb"]
+                    else:
+                        cfg["bg"] = theme["entry_bg"]
+                        cfg["activebackground"] = theme["entry_bg"]
+                try:
+                    child.configure(**cfg)
+                except Exception:
+                    pass
+
+    def _close_calendar(self):
+        if self.calendar_win is not None:
+            try:
+                self.calendar_win.destroy()
+            except Exception:
+                pass
+            self.calendar_win = None
+
+    def _maybe_close_calendar(self, event):
+        if self.calendar_win is None or not self.calendar_win.winfo_exists():
+            return
+        widget = event.widget
+        if widget is self.date_button or widget is self.date_entry:
+            return
+        if str(widget).startswith(str(self.calendar_win)):
+            return
+        self._close_calendar()
 
 
 if __name__ == "__main__":
