@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 from datetime import date, datetime
 import calendar as _calendar
 from tkinter import (
@@ -104,10 +104,10 @@ class App:
         self.transaction_container = None
         self.date_var = StringVar(value=date.today().strftime("%d-%m-%Y"))
         self.date_entry = None
-        self.date_button = None
         self.calendar_win = None
         self._calendar_year = date.today().year
         self._calendar_month = date.today().month
+        self._selected_date = None  # Track the selected date for highlighting
 
         self.header_frame = Frame(self.root, bg=LIGHT_THEME["bg"])
         self.header_frame.pack(fill="x")
@@ -151,10 +151,8 @@ class App:
             lbl.grid(row=0, column=col, sticky="ew", padx=10, pady=(0, 4))
             self.labels.append(lbl)
 
-        date_frame = Frame(self.entry_frame, bg=LIGHT_THEME["bg"])
-        date_frame.grid(row=1, column=0, sticky="new", padx=10, pady=(0, 8))
         self.date_entry = Entry(
-            date_frame,
+            self.entry_frame,
             textvariable=self.date_var,
             justify="center",
             relief="flat",
@@ -162,20 +160,9 @@ class App:
             font=self.entry_font,
             exportselection=False,
         )
-        self.date_entry.pack(side="left", fill="x", expand=True, ipady=4)
+        self.date_entry.grid(row=1, column=0, sticky="new", padx=10, pady=(0, 8), ipady=4)
+        self.date_entry.bind("<Button-1>", lambda e: self._open_calendar())
         self.entries.append(self.date_entry)
-        self.date_button = Button(
-            date_frame,
-            text="📅",
-            command=self._open_calendar,
-            relief="flat",
-            borderwidth=0,
-            padx=6,
-            pady=2,
-            bg=LIGHT_THEME["bg"],
-            activebackground=LIGHT_THEME["bg"],
-        )
-        self.date_button.pack(side="left", padx=(4, 0))
 
         montant_entry = Entry(
             self.entry_frame,
@@ -199,7 +186,7 @@ class App:
             style=self.combobox_style,
             exportselection=False,
         )
-        self.category_combobox.grid(row=1, column=2, sticky="new", padx=10, pady=(0, 8), ipady=3)
+        self.category_combobox.grid(row=1, column=2, sticky="new", padx=10, pady=(0, 8))
         self.category_combobox.configure(font=self.entry_font)
         self.category_combobox.bind("<<ComboboxSelected>>", self._clear_category_selection)
         self.category_combobox.bind("<FocusOut>", self._clear_category_selection)
@@ -230,12 +217,31 @@ class App:
         self.transaction_canvas.pack(side="left", padx=(8, 0))
         self.transaction_canvas.bind("<Button-1>", self._on_transaction_toggle)
 
+        # Add the "Ajouter la ligne" button
+        self.add_button = Button(
+            self.entry_frame,
+            text="Ajouter la ligne",
+            command=self._add_row,
+            relief="flat",
+            borderwidth=0,
+            padx=20,
+            pady=8,
+            bg=LIGHT_THEME["toggle_track_active"],
+            fg=LIGHT_THEME["toggle_thumb"],
+            activebackground=LIGHT_THEME["toggle_track"],
+            font=self.label_font,
+            cursor="hand2"
+        )
+        self.add_button.grid(row=3, column=0, columnspan=3, pady=(20, 0))
+
         self.apply_theme()
         self._update_fonts()
         self._clear_category_selection()
         self._render_transaction_toggle(LIGHT_THEME)
 
         self.root.bind("<Configure>", self._on_resize)
+
+        # Bind click events to close calendar when clicking inside the app window
         self.root.bind("<Button-1>", self._maybe_close_calendar, add="+")
 
     def apply_theme(self):
@@ -264,12 +270,15 @@ class App:
                 highlightbackground=theme["entry_border"],
                 highlightcolor=theme["entry_border"],
             )
-        if self.date_button is not None:
-            self.date_button.configure(bg=theme["bg"], activebackground=theme["bg"], fg=theme["fg"])
-            if self.date_entry is not None:
-                parent = self.date_entry.master
-                if isinstance(parent, Frame):
-                    parent.configure(bg=theme["bg"])
+
+        # Apply theme to add button
+        if hasattr(self, 'add_button'):
+            self.add_button.configure(
+                bg=theme["toggle_track_active"],
+                fg=theme["toggle_thumb"],
+                activebackground=theme["toggle_track"],
+                activeforeground=theme["toggle_thumb"]
+            )
 
         if self.category_combobox is not None:
             self.style.configure(
@@ -280,18 +289,35 @@ class App:
                 selectforeground=theme["entry_fg"],
                 selectbackground=theme["entry_bg"],
                 arrowcolor=theme["entry_fg"],
-                bordercolor=theme["entry_border"],
-                lightcolor=theme["entry_border"],
-                darkcolor=theme["entry_border"],
-                padding=(6, 4, 6, 4),
+                borderwidth=0,
+                focuscolor="none",
+                relief="flat",
+                highlightthickness=0,
+                insertwidth=0,
+                padding=(6, 5, 6, 5),  # Reduced vertical padding
             )
             self.style.map(
                 self.combobox_style,
-                fieldbackground=[("readonly", theme["entry_bg"])],
-                foreground=[("readonly", theme["entry_fg"])],
-                background=[("readonly", theme["entry_bg"])],
+                fieldbackground=[("readonly", theme["entry_bg"]), ("focus", theme["entry_bg"]), ("active", theme["entry_bg"])],
+                foreground=[("readonly", theme["entry_fg"]), ("focus", theme["entry_fg"]), ("active", theme["entry_fg"])],
+                background=[("readonly", theme["entry_bg"]), ("focus", theme["entry_bg"]), ("active", theme["entry_bg"])],
+                relief=[("readonly", "flat"), ("focus", "flat"), ("active", "flat")],
+                borderwidth=[("readonly", 0), ("focus", 0), ("active", 0)],
+                highlightthickness=[("readonly", 0), ("focus", 0), ("active", 0)],
             )
             self.category_combobox.configure(style=self.combobox_style)
+
+            # Configure dropdown list font and colors
+            try:
+                self.style.configure("App.TCombobox.Listbox",
+                                   font=self.entry_font,
+                                   background=theme["entry_bg"],
+                                   foreground=theme["entry_fg"],
+                                   selectbackground=theme["toggle_track_active"],
+                                   selectforeground=theme["toggle_thumb"])
+            except Exception:
+                pass
+
             self._clear_category_selection()
 
         if self.transaction_container is not None:
@@ -369,13 +395,53 @@ class App:
             label.configure(font=self.label_font)
         for entry in self.entries:
             entry.configure(font=self.entry_font)
+
+        # Update add button font
+        if hasattr(self, 'add_button'):
+            self.add_button.configure(font=self.label_font)
+
         if self.category_combobox is not None:
             self.category_combobox.configure(font=self.entry_font)
             self.style.configure(self.combobox_style, font=self.entry_font)
+            # Also configure the dropdown list font
+            try:
+                self.style.configure("App.TCombobox.Listbox", font=self.entry_font)
+            except Exception:
+                pass
             self._clear_category_selection()
         self._render_transaction_toggle(self.current_theme)
         if self.calendar_win is not None:
             self._build_calendar_body()
+
+    def _add_row(self):
+        """Handle adding a new row with the current form data"""
+        # Get the form data
+        date_value = self.date_var.get().strip()
+        montant_value = self.montant_var.get().strip()
+        category_value = self.category_var.get().strip()
+        transaction_type = "Entrée" if self.transaction_is_entry else "Sortie"
+
+        # Basic validation
+        if not date_value:
+            print("Date is required")
+            return
+        if not montant_value:
+            print("Montant is required")
+            return
+        if not category_value:
+            print("Catégorie is required")
+            return
+
+        # For now, just print the data (you can extend this to save to file/database)
+        print(f"Adding row: Date={date_value}, Montant={montant_value}, Catégorie={category_value}, Type={transaction_type}")
+
+        # Clear the form after adding
+        self.montant_var.set("")
+        self.category_var.set("")
+        # Keep the date as it might be reused
+
+        # Clear category selection
+        self._clear_category_selection()
 
     def toggle_theme(self):
         self.is_dark_mode = not self.is_dark_mode
@@ -386,40 +452,113 @@ class App:
             self.calendar_win.lift()
             return
         self.calendar_win = Toplevel(self.root)
-        self.calendar_win.overrideredirect(True)
+
+        # Windows-compatible setup
+        self.calendar_win.title("Select Date")
+        self.calendar_win.resizable(False, False)
         self.calendar_win.transient(self.root)
-        self.calendar_win.attributes("-topmost", True)
+
+        # Try to set topmost, but don't fail if it doesn't work on Windows
+        try:
+            self.calendar_win.attributes("-topmost", True)
+        except Exception:
+            pass
+
         self._sync_calendar_to_entry()
         self._position_calendar()
         self._build_calendar_header()
         self._build_calendar_body()
         self._refresh_calendar_theme()
+
+        # Set focus and grab on Windows
         try:
+            self.calendar_win.focus_set()
             self.calendar_win.grab_set()
         except Exception:
             pass
+
         self.calendar_win.bind("<Escape>", lambda e: self._close_calendar())
+
+        # Additional Windows focus handling
+        self.calendar_win.bind("<FocusOut>", self._on_calendar_focus_out)
 
     def _position_calendar(self):
         if self.date_entry is None:
             return
+
+        # Force window updates to ensure accurate positioning
+        self.root.update_idletasks()
+        self.calendar_win.update_idletasks()
+
+        # Small delay to ensure widgets are properly rendered
+        self.root.after(1, self._do_position_calendar)
+
+    def _do_position_calendar(self):
+        if self.calendar_win is None or not self.calendar_win.winfo_exists():
+            return
+
+        # Get entry field position
         x = self.date_entry.winfo_rootx()
         y = self.date_entry.winfo_rooty() + self.date_entry.winfo_height()
-        self.calendar_win.geometry(f"260x250+{x}+{y}")
+
+        # Adjust for Windows DPI and screen boundaries
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+
+        # Calendar dimensions
+        cal_width = 260
+        cal_height = 250
+
+        # Ensure calendar stays on screen
+        if x + cal_width > screen_width:
+            x = screen_width - cal_width - 10
+        if y + cal_height > screen_height:
+            y = self.date_entry.winfo_rooty() - cal_height
+
+        self.calendar_win.geometry(f"{cal_width}x{cal_height}+{x}+{y}")
 
     def _build_calendar_header(self):
         for child in self.calendar_win.winfo_children():
             child.destroy()
-        header = Frame(self.calendar_win)
+
+        theme = self.current_theme
+        header = Frame(self.calendar_win, bg=theme["bg"])
         header.pack(fill="x", pady=4)
-        prev_btn = Button(header, text="◀", width=2, command=self._prev_month, relief="flat", borderwidth=0)
+
+        prev_btn = Button(
+            header,
+            text="◀",
+            width=2,
+            command=self._prev_month,
+            relief="flat",
+            borderwidth=0,
+            bg=theme["entry_bg"],
+            fg=theme["entry_fg"],
+            activebackground=theme["toggle_track"],
+            activeforeground=theme["toggle_thumb"]
+        )
         prev_btn.pack(side="left", padx=4)
-        next_btn = Button(header, text="▶", width=2, command=self._next_month, relief="flat", borderwidth=0)
+
+        next_btn = Button(
+            header,
+            text="▶",
+            width=2,
+            command=self._next_month,
+            relief="flat",
+            borderwidth=0,
+            bg=theme["entry_bg"],
+            fg=theme["entry_fg"],
+            activebackground=theme["toggle_track"],
+            activeforeground=theme["toggle_thumb"]
+        )
         next_btn.pack(side="right", padx=4)
+
         month_label = Label(
             header,
             text=f"{_calendar.month_name[self._calendar_month]} {self._calendar_year}",
             anchor="center",
+            bg=theme["bg"],
+            fg=theme["fg"]
         )
         month_label.pack(fill="x")
         self._calendar_header_widgets = (header, prev_btn, next_btn, month_label)
@@ -428,12 +567,21 @@ class App:
         existing = getattr(self, "_calendar_day_frame", None)
         if existing and existing.winfo_exists():
             existing.destroy()
-        day_frame = Frame(self.calendar_win)
+
+        theme = self.current_theme
+        day_frame = Frame(self.calendar_win, bg=theme["bg"])
         day_frame.pack(fill="both", expand=True, padx=6, pady=(0, 6))
         self._calendar_day_frame = day_frame
 
+        # Day headers
         for idx, wd in enumerate(["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]):
-            lbl = Label(day_frame, text=wd, anchor="center")
+            lbl = Label(
+                day_frame,
+                text=wd,
+                anchor="center",
+                bg=theme["bg"],
+                fg=theme["fg"]
+            )
             lbl.grid(row=0, column=idx, padx=2, pady=2, sticky="nsew")
 
         for c in range(7):
@@ -442,23 +590,43 @@ class App:
         first_wd, days_in_month = _calendar.monthrange(self._calendar_year, self._calendar_month)
         row = 1
         col = first_wd
-        today_obj = date.today()
 
         for d in range(1, days_in_month + 1):
             current_date = date(self._calendar_year, self._calendar_month, d)
             ds_display = current_date.strftime("%d-%m-%Y")
-            is_today = current_date == today_obj
-            btn = Button(
-                day_frame,
-                text=str(d),
-                width=2,
-                relief="flat",
-                borderwidth=0,
-                command=lambda ds=ds_display: self._select_date(ds),
-            )
+            is_selected = self._selected_date == current_date
+
+            if is_selected:
+                # Selected date - green highlighting
+                btn = Button(
+                    day_frame,
+                    text=str(d),
+                    width=2,
+                    relief="flat",
+                    borderwidth=0,
+                    command=lambda ds=ds_display: self._select_date(ds),
+                    bg=theme["toggle_track_active"],
+                    fg=theme["toggle_thumb"],
+                    activebackground=theme["toggle_track_active"],
+                    activeforeground=theme["toggle_thumb"]
+                )
+                btn._is_selected = True
+            else:
+                # Regular day buttons
+                btn = Button(
+                    day_frame,
+                    text=str(d),
+                    width=2,
+                    relief="flat",
+                    borderwidth=0,
+                    command=lambda ds=ds_display: self._select_date(ds),
+                    bg=theme["entry_bg"],
+                    fg=theme["entry_fg"],
+                    activebackground=theme["toggle_track"],
+                    activeforeground=theme["toggle_thumb"]
+                )
+
             btn.grid(row=row, column=col, padx=1, pady=1, sticky="nsew")
-            if is_today:
-                btn._is_today = True
             col += 1
             if col > 6:
                 col = 0
@@ -469,6 +637,15 @@ class App:
 
     def _select_date(self, ds: str):
         self.date_var.set(ds)
+        # Update the selected date for highlighting
+        try:
+            self._selected_date = datetime.strptime(ds, "%d-%m-%Y").date()
+        except Exception:
+            self._selected_date = None
+        # Refresh the calendar to update highlighting
+        if self.calendar_win and self.calendar_win.winfo_exists():
+            self._build_calendar_body()
+            self._refresh_calendar_theme()
         self._close_calendar()
 
     def _sync_calendar_to_entry(self):
@@ -477,8 +654,13 @@ class App:
             dt = datetime.strptime(value, "%d-%m-%Y")
             self._calendar_year = dt.year
             self._calendar_month = dt.month
+            self._selected_date = dt.date()  # Set the selected date for highlighting
         except Exception:
-            pass
+            # If parsing fails, default to today but don't highlight anything
+            today = date.today()
+            self._calendar_year = today.year
+            self._calendar_month = today.month
+            self._selected_date = None
 
     def _prev_month(self):
         if self._calendar_month == 1:
@@ -505,26 +687,56 @@ class App:
             return
         theme = self.current_theme
         self.calendar_win.configure(bg=theme["bg"])
+
+        # Apply theme to header widgets
         header_widgets = getattr(self, "_calendar_header_widgets", ())
-        for w in header_widgets:
+        if len(header_widgets) >= 4:
+            header, prev_btn, next_btn, month_label = header_widgets
             try:
-                w.configure(bg=theme["bg"], fg=theme.get("fg", "#000"))
+                header.configure(bg=theme["bg"])
+                prev_btn.configure(
+                    bg=theme["entry_bg"],
+                    fg=theme["entry_fg"],
+                    activebackground=theme["toggle_track"],
+                    activeforeground=theme["toggle_thumb"]
+                )
+                next_btn.configure(
+                    bg=theme["entry_bg"],
+                    fg=theme["entry_fg"],
+                    activebackground=theme["toggle_track"],
+                    activeforeground=theme["toggle_thumb"]
+                )
+                month_label.configure(bg=theme["bg"], fg=theme["fg"])
             except Exception:
                 pass
+
+        # Apply theme to day frame and day buttons
         day_frame = getattr(self, "_calendar_day_frame", None)
         if day_frame is not None:
             day_frame.configure(bg=theme["bg"])
             for child in day_frame.winfo_children():
-                cfg = {"bg": theme["bg"], "fg": theme["fg"]}
-                if isinstance(child, Button):
-                    if getattr(child, "_is_today", False):
-                        cfg["bg"] = theme["toggle_track_active"]
-                        cfg["fg"] = theme["toggle_thumb"]
-                    else:
-                        cfg["bg"] = theme["entry_bg"]
-                        cfg["activebackground"] = theme["entry_bg"]
                 try:
-                    child.configure(**cfg)
+                    if isinstance(child, Label):
+                        # Day headers (Mo, Tu, etc.)
+                        child.configure(bg=theme["bg"], fg=theme["fg"])
+                    elif isinstance(child, Button):
+                        # Day buttons
+                        if getattr(child, "_is_selected", False):
+                            # Selected date - green highlighting
+                            child.configure(
+                                bg=theme["toggle_track_active"],
+                                fg=theme["toggle_thumb"],
+                                activebackground=theme["toggle_track_active"],
+                                activeforeground=theme["toggle_thumb"]
+                            )
+                        else:
+                            # Regular day buttons
+                            child.configure(
+                                bg=theme["entry_bg"],
+                                fg=theme["entry_fg"],
+                                activebackground=theme["toggle_track"],
+                                activeforeground=theme["toggle_thumb"]
+                            )
                 except Exception:
                     pass
 
@@ -536,14 +748,47 @@ class App:
                 pass
             self.calendar_win = None
 
+    def _on_calendar_focus_out(self, event):
+        # Small delay to allow for click events to register
+        self.root.after(100, self._check_calendar_focus)
+
+    def _check_calendar_focus(self):
+        if self.calendar_win is None or not self.calendar_win.winfo_exists():
+            return
+        try:
+            focused = self.root.focus_get()
+            if focused is None or str(focused).find(str(self.calendar_win)) == -1:
+                # Focus is outside calendar window
+                if not str(focused).find(str(self.date_entry)) >= 0:
+                    self._close_calendar()
+        except Exception:
+            pass
+
     def _maybe_close_calendar(self, event):
         if self.calendar_win is None or not self.calendar_win.winfo_exists():
             return
+
         widget = event.widget
-        if widget is self.date_button or widget is self.date_entry:
-            return
-        if str(widget).startswith(str(self.calendar_win)):
-            return
+
+        # Don't close if clicking inside calendar window
+        try:
+            # Check if the widget is part of the calendar window hierarchy
+            current_widget = widget
+            while current_widget:
+                try:
+                    current_widget = current_widget.master
+                except AttributeError:
+                    break
+
+            # Also check by widget path string as backup
+            widget_path = str(widget)
+            calendar_path = str(self.calendar_win)
+            if widget_path.startswith(calendar_path):
+                return
+
+        except Exception as e:
+            pass
+
         self._close_calendar()
 
 
