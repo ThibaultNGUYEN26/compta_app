@@ -1,6 +1,13 @@
 ﻿from pathlib import Path
 from datetime import date, datetime
 import calendar as _calendar
+try:
+    from openpyxl import Workbook, load_workbook
+    from openpyxl.utils import get_column_letter
+    EXCEL_AVAILABLE = True
+except ImportError:
+    EXCEL_AVAILABLE = False
+    print("Warning: openpyxl not installed. Excel functionality disabled.")
 from tkinter import (
     Button,
     Canvas,
@@ -108,6 +115,7 @@ class App:
         self._calendar_year = date.today().year
         self._calendar_month = date.today().month
         self._selected_date = None  # Track the selected date for highlighting
+        self._calendar_opening = False  # Flag to prevent immediate closing
 
         self.header_frame = Frame(self.root, bg=LIGHT_THEME["bg"])
         self.header_frame.pack(fill="x")
@@ -161,7 +169,7 @@ class App:
             exportselection=False,
         )
         self.date_entry.grid(row=1, column=0, sticky="new", padx=10, pady=(0, 8), ipady=4)
-        self.date_entry.bind("<Button-1>", lambda e: self._open_calendar())
+        self.date_entry.bind("<Button-1>", lambda e: self._on_date_entry_click())
         self.entries.append(self.date_entry)
 
         montant_entry = Entry(
@@ -415,6 +423,10 @@ class App:
 
     def _add_row(self):
         """Handle adding a new row with the current form data"""
+        if not EXCEL_AVAILABLE:
+            print("Excel functionality not available. Please install openpyxl: pip install openpyxl")
+            return
+
         # Get the form data
         date_value = self.date_var.get().strip()
         montant_value = self.montant_var.get().strip()
@@ -432,20 +444,89 @@ class App:
             print("Catégorie is required")
             return
 
-        # For now, just print the data (you can extend this to save to file/database)
-        print(f"Adding row: Date={date_value}, Montant={montant_value}, Catégorie={category_value}, Type={transaction_type}")
+        try:
+            # Parse the date to get year and month
+            parsed_date = datetime.strptime(date_value, "%d-%m-%Y")
+            year = parsed_date.year
+            month = parsed_date.month
 
-        # Clear the form after adding
-        self.montant_var.set("")
-        self.category_var.set("")
-        # Keep the date as it might be reused
+            # Write to Excel
+            self._write_to_excel(date_value, montant_value, category_value, transaction_type, year, month)
 
-        # Clear category selection
-        self._clear_category_selection()
+            print(f"Successfully added: Date={date_value}, Montant={montant_value}, Catégorie={category_value}, Type={transaction_type}")
+
+            # Clear the form after adding
+            self.montant_var.set("")
+            self.category_var.set("")
+            # Keep the date as it might be reused
+
+            # Clear category selection
+            self._clear_category_selection()
+
+        except ValueError:
+            print("Invalid date format. Please use DD-MM-YYYY format.")
+        except Exception as e:
+            print(f"Error adding row: {e}")
+
+    def _write_to_excel(self, date_value, montant_value, category_value, transaction_type, year, month):
+        """Write data to Excel file with the specified structure"""
+        if not EXCEL_AVAILABLE:
+            return
+
+        # Create file path
+        filename = f"Compta_{year}.xlsx"
+        file_path = Path(filename)
+
+        # Sheet name format: MM_YYYY
+        sheet_name = f"{month:02d}_{year}"
+
+        try:
+            # Try to load existing workbook
+            if file_path.exists():
+                wb = load_workbook(file_path)
+            else:
+                wb = Workbook()
+                # Remove default sheet
+                if "Sheet" in wb.sheetnames:
+                    wb.remove(wb["Sheet"])
+
+            # Get or create the sheet for this month
+            if sheet_name in wb.sheetnames:
+                ws = wb[sheet_name]
+            else:
+                ws = wb.create_sheet(sheet_name)
+                # Add headers
+                headers = ["Date", "Montant", "Catégorie", "Type"]
+                for col, header in enumerate(headers, 1):
+                    ws.cell(row=1, column=col, value=header)
+
+            # Find the next empty row
+            next_row = ws.max_row + 1
+
+            # Add the data
+            ws.cell(row=next_row, column=1, value=date_value)
+            ws.cell(row=next_row, column=2, value=montant_value)
+            ws.cell(row=next_row, column=3, value=category_value)
+            ws.cell(row=next_row, column=4, value=transaction_type)
+
+            # Save the workbook
+            wb.save(file_path)
+            print(f"Data saved to {filename}, sheet {sheet_name}")
+
+        except Exception as e:
+            print(f"Error writing to Excel: {e}")
+            raise
 
     def toggle_theme(self):
         self.is_dark_mode = not self.is_dark_mode
         self.apply_theme()
+
+    def _on_date_entry_click(self):
+        """Handle click on date entry - prevent immediate calendar closing"""
+        self._calendar_opening = True
+        self._open_calendar()
+        # Reset flag after a short delay
+        self.root.after(100, lambda: setattr(self, '_calendar_opening', False))
 
     def _open_calendar(self):
         if self.calendar_win is not None and self.calendar_win.winfo_exists():
@@ -597,7 +678,6 @@ class App:
             is_selected = self._selected_date == current_date
 
             if is_selected:
-                # Selected date - green highlighting
                 btn = Button(
                     day_frame,
                     text=str(d),
@@ -612,7 +692,6 @@ class App:
                 )
                 btn._is_selected = True
             else:
-                # Regular day buttons
                 btn = Button(
                     day_frame,
                     text=str(d),
@@ -637,12 +716,10 @@ class App:
 
     def _select_date(self, ds: str):
         self.date_var.set(ds)
-        # Update the selected date for highlighting
         try:
             self._selected_date = datetime.strptime(ds, "%d-%m-%Y").date()
         except Exception:
             self._selected_date = None
-        # Refresh the calendar to update highlighting
         if self.calendar_win and self.calendar_win.winfo_exists():
             self._build_calendar_body()
             self._refresh_calendar_theme()
@@ -654,9 +731,8 @@ class App:
             dt = datetime.strptime(value, "%d-%m-%Y")
             self._calendar_year = dt.year
             self._calendar_month = dt.month
-            self._selected_date = dt.date()  # Set the selected date for highlighting
+            self._selected_date = dt.date()
         except Exception:
-            # If parsing fails, default to today but don't highlight anything
             today = date.today()
             self._calendar_year = today.year
             self._calendar_month = today.month
@@ -688,7 +764,6 @@ class App:
         theme = self.current_theme
         self.calendar_win.configure(bg=theme["bg"])
 
-        # Apply theme to header widgets
         header_widgets = getattr(self, "_calendar_header_widgets", ())
         if len(header_widgets) >= 4:
             header, prev_btn, next_btn, month_label = header_widgets
@@ -710,19 +785,15 @@ class App:
             except Exception:
                 pass
 
-        # Apply theme to day frame and day buttons
         day_frame = getattr(self, "_calendar_day_frame", None)
         if day_frame is not None:
             day_frame.configure(bg=theme["bg"])
             for child in day_frame.winfo_children():
                 try:
                     if isinstance(child, Label):
-                        # Day headers (Mo, Tu, etc.)
                         child.configure(bg=theme["bg"], fg=theme["fg"])
                     elif isinstance(child, Button):
-                        # Day buttons
                         if getattr(child, "_is_selected", False):
-                            # Selected date - green highlighting
                             child.configure(
                                 bg=theme["toggle_track_active"],
                                 fg=theme["toggle_thumb"],
@@ -730,7 +801,6 @@ class App:
                                 activeforeground=theme["toggle_thumb"]
                             )
                         else:
-                            # Regular day buttons
                             child.configure(
                                 bg=theme["entry_bg"],
                                 fg=theme["entry_fg"],
@@ -749,7 +819,6 @@ class App:
             self.calendar_win = None
 
     def _on_calendar_focus_out(self, event):
-        # Small delay to allow for click events to register
         self.root.after(100, self._check_calendar_focus)
 
     def _check_calendar_focus(self):
@@ -758,7 +827,6 @@ class App:
         try:
             focused = self.root.focus_get()
             if focused is None or str(focused).find(str(self.calendar_win)) == -1:
-                # Focus is outside calendar window
                 if not str(focused).find(str(self.date_entry)) >= 0:
                     self._close_calendar()
         except Exception:
@@ -768,25 +836,30 @@ class App:
         if self.calendar_win is None or not self.calendar_win.winfo_exists():
             return
 
+        if getattr(self, '_calendar_opening', False):
+            return
+
         widget = event.widget
 
-        # Don't close if clicking inside calendar window
+        if widget is self.date_entry:
+            return
+
         try:
-            # Check if the widget is part of the calendar window hierarchy
             current_widget = widget
             while current_widget:
+                if current_widget == self.calendar_win:
+                    return
                 try:
                     current_widget = current_widget.master
                 except AttributeError:
                     break
 
-            # Also check by widget path string as backup
             widget_path = str(widget)
             calendar_path = str(self.calendar_win)
             if widget_path.startswith(calendar_path):
                 return
 
-        except Exception as e:
+        except Exception:
             pass
 
         self._close_calendar()
