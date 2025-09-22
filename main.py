@@ -4,6 +4,7 @@ import calendar as _calendar
 try:
     from openpyxl import Workbook, load_workbook
     from openpyxl.utils import get_column_letter
+    from openpyxl.styles import PatternFill, Font
     EXCEL_AVAILABLE = True
 except ImportError:
     EXCEL_AVAILABLE = False
@@ -24,7 +25,7 @@ from tkinter import ttk
 from tkinter import font as tkfont
 
 ICON_SUBSAMPLE = 2
-ENTRY_NAMES = ["Date", "Montant", "Catégorie"]
+ENTRY_NAMES = ["Date", "Libellé", "Montant", "Catégorie"]
 CATEGORY_VALUES = [
     "Loyer",
     "Courses",
@@ -105,10 +106,17 @@ class App:
         self.entries = []
         self.category_var = StringVar()
         self.category_combobox = None
+        self.libelle_var = StringVar()
         self.montant_var = StringVar()
         self.amount_validator = self.root.register(self._validate_amount)
+        self.libelle_placeholder = "Nom de la transaction"
+        self.libelle_has_placeholder = True
+        self.montant_placeholder = "0.00"
+        self.montant_has_placeholder = True
         self.transaction_is_entry = False
         self.transaction_container = None
+        self.is_prelevement = False
+        self.prelevement_container = None
         self.date_var = StringVar(value=date.today().strftime("%d-%m-%Y"))
         self.date_entry = None
         self.calendar_win = None
@@ -143,7 +151,7 @@ class App:
         self.entry_frame = Frame(self.body, bg=LIGHT_THEME["bg"])
         self.entry_frame.grid(row=1, column=0)
 
-        for i in range(3):
+        for i in range(4):
             self.entry_frame.columnconfigure(i, weight=1, uniform="col")
 
         for col, name in enumerate(ENTRY_NAMES):
@@ -172,6 +180,21 @@ class App:
         self.date_entry.bind("<Button-1>", lambda e: self._on_date_entry_click())
         self.entries.append(self.date_entry)
 
+        libelle_entry = Entry(
+            self.entry_frame,
+            textvariable=self.libelle_var,
+            justify="center",
+            relief="flat",
+            highlightthickness=1,
+            font=self.entry_font,
+            exportselection=False,
+        )
+        libelle_entry.grid(row=1, column=1, sticky="new", padx=10, pady=(0, 8), ipady=4)
+        libelle_entry.bind("<FocusIn>", self._on_libelle_focus_in)
+        libelle_entry.bind("<FocusOut>", self._on_libelle_focus_out)
+        self.entries.append(libelle_entry)
+        self.libelle_entry = libelle_entry
+
         montant_entry = Entry(
             self.entry_frame,
             textvariable=self.montant_var,
@@ -183,8 +206,11 @@ class App:
             validate="key",
             validatecommand=(self.amount_validator, "%P"),
         )
-        montant_entry.grid(row=1, column=1, sticky="new", padx=10, pady=(0, 8), ipady=4)
+        montant_entry.grid(row=1, column=2, sticky="new", padx=10, pady=(0, 8), ipady=4)
+        montant_entry.bind("<FocusIn>", self._on_montant_focus_in)
+        montant_entry.bind("<FocusOut>", self._on_montant_focus_out)
         self.entries.append(montant_entry)
+        self.montant_entry = montant_entry
 
         self.category_combobox = ttk.Combobox(
             self.entry_frame,
@@ -194,13 +220,55 @@ class App:
             style=self.combobox_style,
             exportselection=False,
         )
-        self.category_combobox.grid(row=1, column=2, sticky="new", padx=10, pady=(0, 8))
+        self.category_combobox.grid(row=1, column=3, sticky="new", padx=10, pady=(0, 8))
         self.category_combobox.configure(font=self.entry_font)
         self.category_combobox.bind("<<ComboboxSelected>>", self._clear_category_selection)
         self.category_combobox.bind("<FocusOut>", self._clear_category_selection)
 
+        # Prélèvement toggle container
+        self.prelevement_container = Frame(self.entry_frame, bg=LIGHT_THEME["bg"])
+        self.prelevement_container.grid(row=2, column=3, pady=(2, 0))
+
+        # Add "Prélèvement" label
+        prelevement_text_label = Label(
+            self.prelevement_container,
+            text="Prélèvement",
+            bg=LIGHT_THEME["bg"],
+            fg=LIGHT_THEME["fg"],
+            font=self.label_font,
+        )
+        prelevement_text_label.pack(side="top", pady=(0, 4))
+        self.labels.append(prelevement_text_label)
+
+        # Create a sub-container for the toggle elements
+        self.prelevement_toggle_container = Frame(self.prelevement_container, bg=LIGHT_THEME["bg"])
+        self.prelevement_toggle_container.pack()
+
+        self.prelevement_label = Label(
+            self.prelevement_toggle_container,
+            text="Non",
+            bg=LIGHT_THEME["bg"],
+            fg=LIGHT_THEME["fg"],
+            font=self.label_font,
+        )
+        self.prelevement_label.pack(side="left", padx=(0, 6))
+        self.prelevement_label.bind("<Button-1>", self._on_prelevement_toggle)
+        self.labels.append(self.prelevement_label)
+
+        self.prelevement_canvas = Canvas(
+            self.prelevement_toggle_container,
+            width=54,
+            height=28,
+            bd=0,
+            highlightthickness=0,
+            relief="flat",
+            bg=LIGHT_THEME["bg"],
+        )
+        self.prelevement_canvas.pack(side="left", padx=(8, 0))
+        self.prelevement_canvas.bind("<Button-1>", self._on_prelevement_toggle)
+
         self.transaction_container = Frame(self.entry_frame, bg=LIGHT_THEME["bg"])
-        self.transaction_container.grid(row=2, column=1, pady=(2, 0))
+        self.transaction_container.grid(row=2, column=2, pady=(2, 0))
 
         self.transaction_label = Label(
             self.transaction_container,
@@ -240,12 +308,15 @@ class App:
             font=self.label_font,
             cursor="hand2"
         )
-        self.add_button.grid(row=3, column=0, columnspan=3, pady=(20, 0))
+        self.add_button.grid(row=3, column=0, columnspan=4, pady=(20, 0))
 
         self.apply_theme()
         self._update_fonts()
         self._clear_category_selection()
         self._render_transaction_toggle(LIGHT_THEME)
+        self._render_prelevement_toggle(LIGHT_THEME)
+        self._initialize_libelle_placeholder()
+        self._initialize_montant_placeholder()
 
         self.root.bind("<Configure>", self._on_resize)
 
@@ -271,13 +342,38 @@ class App:
             label.configure(bg=theme["bg"], fg=theme["fg"])
 
         for entry in self.entries:
-            entry.configure(
-                bg=theme["entry_bg"],
-                fg=theme["entry_fg"],
-                insertbackground=theme["entry_fg"],
-                highlightbackground=theme["entry_border"],
-                highlightcolor=theme["entry_border"],
-            )
+            if entry == getattr(self, 'libelle_entry', None):
+                # Special handling for libellé entry to preserve placeholder styling
+                entry.configure(
+                    bg=theme["entry_bg"],
+                    insertbackground=theme["entry_fg"],
+                    highlightbackground=theme["entry_border"],
+                    highlightcolor=theme["entry_border"],
+                )
+                # Don't set fg here - let _update_libelle_appearance handle it
+            elif entry == getattr(self, 'montant_entry', None):
+                # Special handling for montant entry to preserve placeholder styling
+                entry.configure(
+                    bg=theme["entry_bg"],
+                    insertbackground=theme["entry_fg"],
+                    highlightbackground=theme["entry_border"],
+                    highlightcolor=theme["entry_border"],
+                )
+                # Don't set fg here - let _update_montant_appearance handle it
+            else:
+                entry.configure(
+                    bg=theme["entry_bg"],
+                    fg=theme["entry_fg"],
+                    insertbackground=theme["entry_fg"],
+                    highlightbackground=theme["entry_border"],
+                    highlightcolor=theme["entry_border"],
+                )
+
+        # Update appearance after theme change
+        if hasattr(self, 'libelle_entry'):
+            self._update_libelle_appearance()
+        if hasattr(self, 'montant_entry'):
+            self._update_montant_appearance()
 
         # Apply theme to add button
         if hasattr(self, 'add_button'):
@@ -333,7 +429,15 @@ class App:
         if hasattr(self, "transaction_canvas"):
             self.transaction_canvas.configure(bg=theme["bg"])
 
+        if self.prelevement_container is not None:
+            self.prelevement_container.configure(bg=theme["bg"])
+        if hasattr(self, "prelevement_toggle_container"):
+            self.prelevement_toggle_container.configure(bg=theme["bg"])
+        if hasattr(self, "prelevement_canvas"):
+            self.prelevement_canvas.configure(bg=theme["bg"])
+
         self._render_transaction_toggle(theme)
+        self._render_prelevement_toggle(theme)
         self._refresh_calendar_theme()
 
     def _clear_category_selection(self, *_):
@@ -342,7 +446,8 @@ class App:
             self.category_combobox.icursor("end")
 
     def _validate_amount(self, proposed: str) -> bool:
-        if proposed == "":
+        # Allow empty string and placeholder value
+        if proposed == "" or proposed == self.montant_placeholder:
             return True
         allowed_chars = set("0123456789.,")
         if any(char not in allowed_chars for char in proposed):
@@ -350,6 +455,78 @@ class App:
         if proposed.count(".") + proposed.count(",") > 1:
             return False
         return True
+
+    def _on_montant_focus_in(self, event):
+        """Handle focus in event for montant entry - remove placeholder"""
+        if self.montant_has_placeholder:
+            self.montant_var.set("")
+            self.montant_has_placeholder = False
+            self._update_montant_appearance()
+
+    def _on_montant_focus_out(self, event):
+        """Handle focus out event for montant entry - add placeholder if empty"""
+        if not self.montant_var.get().strip():
+            self.montant_var.set(self.montant_placeholder)
+            self.montant_has_placeholder = True
+            self._update_montant_appearance()
+
+    def _update_montant_appearance(self):
+        """Update the appearance of montant entry based on placeholder state"""
+        if hasattr(self, 'montant_entry') and self.montant_entry:
+            theme = self.current_theme
+            if self.montant_has_placeholder:
+                # Placeholder style - lighter text
+                self.montant_entry.configure(
+                    fg=theme["entry_border"]  # Use border color for placeholder (lighter)
+                )
+            else:
+                # Normal style
+                self.montant_entry.configure(
+                    fg=theme["entry_fg"]
+                )
+
+    def _initialize_montant_placeholder(self):
+        """Initialize the placeholder in the montant entry"""
+        if not self.montant_var.get().strip():
+            self.montant_var.set(self.montant_placeholder)
+            self.montant_has_placeholder = True
+            self._update_montant_appearance()
+
+    def _on_libelle_focus_in(self, event):
+        """Handle focus in event for libellé entry - remove placeholder"""
+        if self.libelle_has_placeholder:
+            self.libelle_var.set("")
+            self.libelle_has_placeholder = False
+            self._update_libelle_appearance()
+
+    def _on_libelle_focus_out(self, event):
+        """Handle focus out event for libellé entry - add placeholder if empty"""
+        if not self.libelle_var.get().strip():
+            self.libelle_var.set(self.libelle_placeholder)
+            self.libelle_has_placeholder = True
+            self._update_libelle_appearance()
+
+    def _update_libelle_appearance(self):
+        """Update the appearance of libellé entry based on placeholder state"""
+        if hasattr(self, 'libelle_entry') and self.libelle_entry:
+            theme = self.current_theme
+            if self.libelle_has_placeholder:
+                # Placeholder style - lighter text
+                self.libelle_entry.configure(
+                    fg=theme["entry_border"]  # Use border color for placeholder (lighter)
+                )
+            else:
+                # Normal style
+                self.libelle_entry.configure(
+                    fg=theme["entry_fg"]
+                )
+
+    def _initialize_libelle_placeholder(self):
+        """Initialize the placeholder in the libellé entry"""
+        if not self.libelle_var.get().strip():
+            self.libelle_var.set(self.libelle_placeholder)
+            self.libelle_has_placeholder = True
+            self._update_libelle_appearance()
 
     def _render_transaction_toggle(self, theme):
         if not hasattr(self, "transaction_canvas"):
@@ -382,6 +559,38 @@ class App:
     def _on_transaction_toggle(self, *_):
         self.transaction_is_entry = not self.transaction_is_entry
         self._render_transaction_toggle(self.current_theme)
+
+    def _render_prelevement_toggle(self, theme):
+        if not hasattr(self, "prelevement_canvas"):
+            return
+        self.prelevement_canvas.delete("all")
+        self.prelevement_canvas.configure(bg=theme["bg"])
+        track_color = theme["toggle_track_active"] if self.is_prelevement else theme["toggle_track"]
+        thumb_color = theme["toggle_thumb"]
+
+        width = int(self.prelevement_canvas.cget("width"))
+        height = int(self.prelevement_canvas.cget("height"))
+        radius = height // 2
+
+        self.prelevement_canvas.create_oval(0, 0, height, height, fill=track_color, outline="")
+        self.prelevement_canvas.create_oval(width - height, 0, width, height, fill=track_color, outline="")
+        self.prelevement_canvas.create_rectangle(radius, 0, width - radius, height, fill=track_color, outline="")
+
+        thumb_offset = width - height + 2 if self.is_prelevement else 2
+        self.prelevement_canvas.create_oval(
+            thumb_offset,
+            2,
+            thumb_offset + height - 4,
+            height - 2,
+            fill=thumb_color,
+            outline="",
+        )
+
+        self.prelevement_label.configure(text="Oui" if self.is_prelevement else "Non")
+
+    def _on_prelevement_toggle(self, *_):
+        self.is_prelevement = not self.is_prelevement
+        self._render_prelevement_toggle(self.current_theme)
 
     def _on_resize(self, event):
         if event.widget is self.root:
@@ -418,6 +627,7 @@ class App:
                 pass
             self._clear_category_selection()
         self._render_transaction_toggle(self.current_theme)
+        self._render_prelevement_toggle(self.current_theme)
         if self.calendar_win is not None:
             self._build_calendar_body()
 
@@ -429,15 +639,20 @@ class App:
 
         # Get the form data
         date_value = self.date_var.get().strip()
+        libelle_value = self.libelle_var.get().strip()
         montant_value = self.montant_var.get().strip()
         category_value = self.category_var.get().strip()
         transaction_type = "Entrée" if self.transaction_is_entry else "Sortie"
+        prelevement_status = "Oui" if self.is_prelevement else "Non"
 
         # Basic validation
         if not date_value:
             print("Date is required")
             return
-        if not montant_value:
+        if not libelle_value or libelle_value == self.libelle_placeholder:
+            print("Libellé is required")
+            return
+        if not montant_value or montant_value == self.montant_placeholder:
             print("Montant is required")
             return
         if not category_value:
@@ -451,12 +666,17 @@ class App:
             month = parsed_date.month
 
             # Write to Excel
-            self._write_to_excel(date_value, montant_value, category_value, transaction_type, year, month)
+            self._write_to_excel(date_value, libelle_value, montant_value, category_value, transaction_type, prelevement_status, year, month)
 
-            print(f"Successfully added: Date={date_value}, Montant={montant_value}, Catégorie={category_value}, Type={transaction_type}")
+            print(f"Successfully added: Date={date_value}, Libellé={libelle_value}, Montant={montant_value}, Catégorie={category_value}, Type={transaction_type}, Prélèvement={prelevement_status}")
 
             # Clear the form after adding
-            self.montant_var.set("")
+            self.libelle_var.set(self.libelle_placeholder)
+            self.libelle_has_placeholder = True
+            self._update_libelle_appearance()
+            self.montant_var.set(self.montant_placeholder)
+            self.montant_has_placeholder = True
+            self._update_montant_appearance()
             self.category_var.set("")
             # Keep the date as it might be reused
 
@@ -468,7 +688,7 @@ class App:
         except Exception as e:
             print(f"Error adding row: {e}")
 
-    def _write_to_excel(self, date_value, montant_value, category_value, transaction_type, year, month):
+    def _write_to_excel(self, date_value, libelle_value, montant_value, category_value, transaction_type, prelevement_status, year, month):
         """Write data to Excel file with the specified structure"""
         if not EXCEL_AVAILABLE:
             return
@@ -496,7 +716,7 @@ class App:
             else:
                 ws = wb.create_sheet(sheet_name)
                 # Add headers
-                headers = ["Date", "Montant", "Catégorie", "Type"]
+                headers = ["Date", "Libellé", "Montant", "Catégorie", "Type", "Prélèvement"]
                 for col, header in enumerate(headers, 1):
                     ws.cell(row=1, column=col, value=header)
 
@@ -505,9 +725,31 @@ class App:
 
             # Add the data
             ws.cell(row=next_row, column=1, value=date_value)
-            ws.cell(row=next_row, column=2, value=montant_value)
-            ws.cell(row=next_row, column=3, value=category_value)
-            ws.cell(row=next_row, column=4, value=transaction_type)
+            ws.cell(row=next_row, column=2, value=libelle_value)
+            ws.cell(row=next_row, column=3, value=montant_value)
+            ws.cell(row=next_row, column=4, value=category_value)
+            ws.cell(row=next_row, column=5, value=transaction_type)
+            ws.cell(row=next_row, column=6, value=prelevement_status)
+
+            # Apply color formatting with priority: Prélèvement > Transaction Type
+            if prelevement_status == "Oui":
+                # Yellow background for prélèvement (light yellow with dark orange text)
+                fill = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")
+                font_color = Font(color="F57F17")
+            elif transaction_type == "Entrée":
+                # Green background for income (light green with dark green text)
+                fill = PatternFill(start_color="C8E6C9", end_color="C8E6C9", fill_type="solid")
+                font_color = Font(color="2E7D32")
+            else:  # "Sortie"
+                # Red background for outcome (light red with dark red text)
+                fill = PatternFill(start_color="FFCDD2", end_color="FFCDD2", fill_type="solid")
+                font_color = Font(color="C62828")
+
+            # Apply formatting to all cells in the row
+            for col in range(1, 7):  # Columns 1-6 (Date, Libellé, Montant, Catégorie, Type, Prélèvement)
+                cell = ws.cell(row=next_row, column=col)
+                cell.fill = fill
+                cell.font = font_color
 
             # Save the workbook
             wb.save(file_path)
