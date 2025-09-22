@@ -15,6 +15,7 @@ from tkinter import (
     Entry,
     Frame,
     Label,
+    messagebox,
     PhotoImage,
     StringVar,
     Tk,
@@ -700,64 +701,100 @@ class App:
         # Sheet name format: MM_YYYY
         sheet_name = f"{month:02d}_{year}"
 
-        try:
-            # Try to load existing workbook
-            if file_path.exists():
-                wb = load_workbook(file_path)
-            else:
-                wb = Workbook()
-                # Remove default sheet
-                if "Sheet" in wb.sheetnames:
-                    wb.remove(wb["Sheet"])
+        # Handle file locks with a simple guided retry flow
+        while True:
+            try:
+                # Try to load existing workbook
+                if file_path.exists():
+                    wb = load_workbook(file_path)
+                else:
+                    wb = Workbook()
+                    # Remove default sheet
+                    if "Sheet" in wb.sheetnames:
+                        wb.remove(wb["Sheet"])
 
-            # Get or create the sheet for this month
-            if sheet_name in wb.sheetnames:
-                ws = wb[sheet_name]
-            else:
-                ws = wb.create_sheet(sheet_name)
-                # Add headers
-                headers = ["Date", "Libellé", "Montant", "Catégorie", "Type", "Prélèvement"]
-                for col, header in enumerate(headers, 1):
-                    ws.cell(row=1, column=col, value=header)
+                # Get or create the sheet for this month
+                if sheet_name in wb.sheetnames:
+                    ws = wb[sheet_name]
+                else:
+                    ws = wb.create_sheet(sheet_name)
+                    # Add headers
+                    headers = ["Date", "Libellé", "Montant", "Catégorie", "Type", "Prélèvement"]
+                    for col, header in enumerate(headers, 1):
+                        ws.cell(row=1, column=col, value=header)
 
-            # Find the next empty row
-            next_row = ws.max_row + 1
+                # Find the next empty row
+                next_row = ws.max_row + 1
 
-            # Add the data
-            ws.cell(row=next_row, column=1, value=date_value)
-            ws.cell(row=next_row, column=2, value=libelle_value)
-            ws.cell(row=next_row, column=3, value=montant_value)
-            ws.cell(row=next_row, column=4, value=category_value)
-            ws.cell(row=next_row, column=5, value=transaction_type)
-            ws.cell(row=next_row, column=6, value=prelevement_status)
+                # Add the data
+                ws.cell(row=next_row, column=1, value=date_value)
+                ws.cell(row=next_row, column=2, value=libelle_value)
+                montant_cell = ws.cell(row=next_row, column=3)
+                try:
+                    montant_numeric = float(str(montant_value).replace(",", "."))
+                    montant_cell.value = montant_numeric
+                    montant_cell.number_format = "#,##0.00 [$€-fr-FR]"
+                except Exception:
+                    montant_cell.value = montant_value
+                ws.cell(row=next_row, column=4, value=category_value)
+                ws.cell(row=next_row, column=5, value=transaction_type)
+                ws.cell(row=next_row, column=6, value=prelevement_status)
 
-            # Apply color formatting with priority: Prélèvement > Transaction Type
-            if prelevement_status == "Oui":
-                # Yellow background for prélèvement (light yellow with dark orange text)
-                fill = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")
-                font_color = Font(color="F57F17")
-            elif transaction_type == "Entrée":
-                # Green background for income (light green with dark green text)
-                fill = PatternFill(start_color="C8E6C9", end_color="C8E6C9", fill_type="solid")
-                font_color = Font(color="2E7D32")
-            else:  # "Sortie"
-                # Red background for outcome (light red with dark red text)
-                fill = PatternFill(start_color="FFCDD2", end_color="FFCDD2", fill_type="solid")
-                font_color = Font(color="C62828")
+                # Apply color formatting with priority: Prélèvement > Transaction Type
+                if prelevement_status == "Oui":
+                    # Yellow background for prélèvement (light yellow with dark orange text)
+                    fill = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")
+                    font_color = Font(color="F57F17")
+                elif transaction_type == "Entrée":
+                    # Green background for income (light green with dark green text)
+                    fill = PatternFill(start_color="C8E6C9", end_color="C8E6C9", fill_type="solid")
+                    font_color = Font(color="2E7D32")
+                else:  # "Sortie"
+                    # Red background for outcome (light red with dark red text)
+                    fill = PatternFill(start_color="FFCDD2", end_color="FFCDD2", fill_type="solid")
+                    font_color = Font(color="C62828")
 
-            # Apply formatting to all cells in the row
-            for col in range(1, 7):  # Columns 1-6 (Date, Libellé, Montant, Catégorie, Type, Prélèvement)
-                cell = ws.cell(row=next_row, column=col)
-                cell.fill = fill
-                cell.font = font_color
+                # Apply formatting to all cells in the row
+                for col in range(1, 7):  # Columns 1-6 (Date, Libellé, Montant, Catégorie, Type, Prélèvement)
+                    cell = ws.cell(row=next_row, column=col)
+                    cell.fill = fill
+                    cell.font = font_color
 
-            # Save the workbook
-            wb.save(file_path)
-            print(f"Data saved to {filename}, sheet {sheet_name}")
+                try:
+                    for r in range(2, ws.max_row + 1):
+                        c = ws.cell(row=r, column=3)
+                        v = c.value
+                        if isinstance(v, str):
+                            try:
+                                c.value = float(v.replace(",", "."))
+                            except Exception:
+                                pass
+                        if isinstance(c.value, (int, float)):
+                            c.number_format = "#,##0.00 [$€-fr-FR]"
+                except Exception:
+                    pass
 
-        except Exception as e:
-            print(f"Error writing to Excel: {e}")
-            raise
+                # Try to save the workbook
+                wb.save(file_path)
+                print(f"Data saved to {filename}, sheet {sheet_name}")
+                break
+
+            except PermissionError:
+                # Excel likely has the file open. Ask user to close and retry.
+                retry = messagebox.askretrycancel(
+                    title="Excel file is open",
+                    message=(
+                        f"Le fichier {filename} est ouvert dans Excel et ne peut pas être modifié.\n\n"
+                        "Fermez le fichier dans Excel puis cliquez sur Réessayer.\n"
+                        "Cliquez sur Annuler pour abandonner l'enregistrement."
+                    ),
+                )
+                if not retry:
+                    print("Save cancelled by user due to open Excel file.")
+                    return
+            except Exception as e:
+                print(f"Error writing to Excel: {e}")
+                raise
 
     def toggle_theme(self):
         self.is_dark_mode = not self.is_dark_mode
