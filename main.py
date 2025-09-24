@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 from datetime import date, datetime
 import re
 import calendar as _calendar
@@ -53,6 +53,14 @@ FONT_MIN_SIZE = 10
 FONT_MAX_SIZE = 18
 FONT_SCALE_DIVISOR = 35
 FONT_FAMILY = "Segoe UI"
+
+# Excel export styling constants (adjusted per user request)
+EXCEL_BODY_FONT_SIZE = 16
+EXCEL_TITLE_FONT_SIZE = 18
+
+# Chart sizing (reduced by factor ~1.5 from previous 24x18)
+CHART_WIDTH = 16  # was 24
+CHART_HEIGHT = 12  # was 18
 
 # Dynamic sizing constants for toggle switches
 TOGGLE_MIN_HEIGHT = 20
@@ -1032,15 +1040,15 @@ class App:
 
             # Blank separator row 14 (leave empty)
             # Rows 15-23 left intentionally blank after refactor
-            # Row 21 title for income section (adjusted per user request)
-            income_title_cell = ws.cell(row=21, column=11, value="Income")
+            # Row 15 title for income section (updated per new user request)
+            income_title_cell = ws.cell(row=15, column=11, value="Income")
             try:
-                income_title_cell.font = Font(bold=True, size=20)
+                income_title_cell.font = Font(bold=True, size=EXCEL_TITLE_FONT_SIZE)
             except Exception:
                 pass
-            # Rows 22-33 categories income values (skip zeros -> leave blank)
+            # Rows 16-27 categories income values (skip zeros -> leave blank)
             for i, cat in enumerate(CATEGORY_VALUES):
-                row_idx = 22 + i
+                row_idx = 16 + i
                 amt_entree = cat_stats.get(cat, {}).get("entrees_amount", 0)
                 if amt_entree not in (0, 0.0, None):
                     ws.cell(row=row_idx, column=11, value=cat)
@@ -1114,8 +1122,8 @@ class App:
                 pie_out.legend.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1600)))])
             except Exception:
                 pass
-            pie_out.height = 18
-            pie_out.width = 24
+            pie_out.height = CHART_HEIGHT
+            pie_out.width = CHART_WIDTH
             try:
                 from openpyxl.drawing.text import ParagraphProperties, CharacterProperties
                 if getattr(pie_out, 'title', None) and getattr(pie_out.title, 'tx', None) and getattr(pie_out.title.tx, 'rich', None):
@@ -1139,8 +1147,8 @@ class App:
             ws.add_chart(pie_out, "O2")
 
             # -------- Income Chart (Entrées) --------
-            labels_ref_in = Reference(ws, min_col=11, max_col=11, min_row=22, max_row=33)
-            values_ref_in = Reference(ws, min_col=12, max_col=12, min_row=22, max_row=33)
+            labels_ref_in = Reference(ws, min_col=11, max_col=11, min_row=16, max_row=27)
+            values_ref_in = Reference(ws, min_col=12, max_col=12, min_row=16, max_row=27)
             pie_in = PieChart()
             pie_in.title = "Entrées par Catégorie"
             pie_in.add_data(values_ref_in, titles_from_data=False)
@@ -1198,8 +1206,8 @@ class App:
                 pie_in.legend.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1600)))])
             except Exception:
                 pass
-            pie_in.height = 18
-            pie_in.width = 24
+            pie_in.height = CHART_HEIGHT
+            pie_in.width = CHART_WIDTH
             try:
                 from openpyxl.drawing.text import ParagraphProperties, CharacterProperties
                 if getattr(pie_in, 'title', None) and getattr(pie_in.title, 'tx', None) and getattr(pie_in.title.tx, 'rich', None):
@@ -1219,7 +1227,7 @@ class App:
                     ws._charts.remove(obj)
             except Exception:
                 pass
-            ws.add_chart(pie_in, "O21")  # repositioned to align with new income title row
+            ws.add_chart(pie_in, "O15")  # repositioned to align with new income title row (row 15)
             # Ensure uniform row heights so blank spacer rows (14-23) aren't visually compressed
             try:
                 # Choose a height that fits 18-20pt fonts comfortably
@@ -1233,9 +1241,9 @@ class App:
             print(f"Warning: could not create category charts: {e}")
 
     def _apply_sheet_fonts(self, ws):
-        """Set header row fonts (bold size 20) and remaining populated rows font size 18.
-
-        Preserves existing font colors (already applied for semantic coloring) by reusing the color attribute.
+        """Set header row fonts (bold size EXCEL_TITLE_FONT_SIZE) and remaining populated rows
+        font size EXCEL_BODY_FONT_SIZE. Preserves existing font colors (already applied for semantic
+        coloring) by reusing the color attribute.
         """
         try:
             max_col = ws.max_column
@@ -1246,7 +1254,7 @@ class App:
                 if cell.value in (None, ""):
                     continue
                 prev_font = cell.font
-                cell.font = Font(bold=True, size=20, color=getattr(prev_font, 'color', None))
+                cell.font = Font(bold=True, size=EXCEL_TITLE_FONT_SIZE, color=getattr(prev_font, 'color', None))
 
             # Body rows
             for r in range(2, max_row + 1):
@@ -1258,19 +1266,18 @@ class App:
                     if cell.value in (None, ""):
                         continue
                     # Preserve Income title at K21 (row 21, col 11)
-                    if r == 21 and c == 11 and cell.value == "Income":
-                        # Ensure correct styling (in case previously downgraded)
+                    if r == 15 and c == 11 and cell.value == "Income":
                         prev_color = getattr(cell.font, 'color', None)
-                        cell.font = Font(bold=True, size=20, color=prev_color)
+                        cell.font = Font(bold=True, size=EXCEL_TITLE_FONT_SIZE, color=prev_color)
                         continue
                     prev_font = cell.font
-                    cell.font = Font(bold=False, size=18, color=getattr(prev_font, 'color', None))
+                    cell.font = Font(bold=False, size=EXCEL_BODY_FONT_SIZE, color=getattr(prev_font, 'color', None))
             # Re-assert Income title styling explicitly (safety)
             try:
-                income_cell = ws.cell(row=21, column=11)
+                income_cell = ws.cell(row=15, column=11)
                 if income_cell.value == "Income":
                     prev_color = getattr(income_cell.font, 'color', None)
-                    income_cell.font = Font(bold=True, size=20, color=prev_color)
+                    income_cell.font = Font(bold=True, size=EXCEL_TITLE_FONT_SIZE, color=prev_color)
             except Exception:
                 pass
         except Exception as e:
