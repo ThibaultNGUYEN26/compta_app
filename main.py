@@ -1,5 +1,6 @@
-﻿from pathlib import Path
+from pathlib import Path
 from datetime import date, datetime
+import re
 import calendar as _calendar
 try:
     from openpyxl import Workbook, load_workbook
@@ -45,6 +46,11 @@ FONT_MIN_SIZE = 10
 FONT_MAX_SIZE = 18
 FONT_SCALE_DIVISOR = 35
 FONT_FAMILY = "Segoe UI"
+
+# Dynamic sizing constants for toggle switches
+TOGGLE_MIN_HEIGHT = 20
+TOGGLE_MAX_HEIGHT = 56  # Prevents oversized toggles on huge windows
+TOGGLE_ASPECT_RATIO = 1.9  # width = height * ratio
 
 LIGHT_THEME = {
     "bg": "#f0f0f0",
@@ -627,8 +633,32 @@ class App:
             except Exception:
                 pass
             self._clear_category_selection()
-        self._render_transaction_toggle(self.current_theme)
-        self._render_prelevement_toggle(self.current_theme)
+        # Dynamic toggle sizing based on computed font size / window
+        toggle_height = int(new_size * 1.7)
+        toggle_height = max(TOGGLE_MIN_HEIGHT, min(TOGGLE_MAX_HEIGHT, toggle_height))
+        toggle_width = int(toggle_height * TOGGLE_ASPECT_RATIO)
+
+        resized = False
+        if hasattr(self, 'transaction_canvas') and self.transaction_canvas:
+            cur_w = int(self.transaction_canvas.cget('width'))
+            cur_h = int(self.transaction_canvas.cget('height'))
+            if cur_w != toggle_width or cur_h != toggle_height:
+                self.transaction_canvas.configure(width=toggle_width, height=toggle_height)
+                resized = True
+        if hasattr(self, 'prelevement_canvas') and self.prelevement_canvas:
+            cur_w = int(self.prelevement_canvas.cget('width'))
+            cur_h = int(self.prelevement_canvas.cget('height'))
+            if cur_w != toggle_width or cur_h != toggle_height:
+                self.prelevement_canvas.configure(width=toggle_width, height=toggle_height)
+                resized = True
+
+        # Re-render toggles (always if resized; cheap operation)
+        if resized:
+            self._render_transaction_toggle(self.current_theme)
+            self._render_prelevement_toggle(self.current_theme)
+        else:
+            self._render_transaction_toggle(self.current_theme)
+            self._render_prelevement_toggle(self.current_theme)
         if self.calendar_win is not None:
             self._build_calendar_body()
 
@@ -723,11 +753,20 @@ class App:
                     for col, header in enumerate(headers, 1):
                         ws.cell(row=1, column=col, value=header)
 
-                # Find the next empty row
-                next_row = ws.max_row + 1
+                # Find the next empty row considering only transaction data columns (A-F)
+                next_row = self._find_next_transaction_row(ws)
 
                 # Add the data
-                ws.cell(row=next_row, column=1, value=date_value)
+                # Column A: store as real date (not text)
+                date_cell = ws.cell(row=next_row, column=1)
+                try:
+                    parsed_dt = datetime.strptime(date_value, "%d-%m-%Y").date()
+                    date_cell.value = parsed_dt
+                    # Use localized short date style (day/month/year)
+                    date_cell.number_format = "dd/mm/yyyy"
+                except Exception:
+                    # Fallback to original text if parsing fails
+                    date_cell.value = date_value
                 ws.cell(row=next_row, column=2, value=libelle_value)
                 montant_cell = ws.cell(row=next_row, column=3)
                 try:
@@ -775,6 +814,26 @@ class App:
                     pass
 
                 # Try to save the workbook
+                # Update statistics for this sheet before saving
+                try:
+                    self._update_sheet_statistics(ws)
+                except Exception as e:
+                    print(f"Warning: could not update statistics: {e}")
+                # Normalize existing date column values to real dates
+                try:
+                    self._normalize_date_column(ws)
+                except Exception as e:
+                    print(f"Warning: could not normalize dates: {e}")
+                # Apply fixed column widths (A-F = 20, H-I = 30) before font sizing
+                try:
+                    self._apply_fixed_widths(ws)
+                except Exception as e:
+                    print(f"Warning: could not apply fixed widths: {e}")
+                # Apply font sizing (headers vs data) before saving
+                try:
+                    self._apply_sheet_fonts(ws)
+                except Exception as e:
+                    print(f"Warning: could not apply font sizing: {e}")
                 wb.save(file_path)
                 print(f"Data saved to {filename}, sheet {sheet_name}")
                 break
@@ -799,6 +858,234 @@ class App:
     def toggle_theme(self):
         self.is_dark_mode = not self.is_dark_mode
         self.apply_theme()
+
+    # ------------------ Statistics Helpers ------------------
+    def _update_sheet_statistics(self, ws):
+        """Compute and write statistics into columns H (labels) & I (values).
+
+        Revised logic (treat 'Épargne' as internal transfers between current & savings):
+          - Non-Épargne Entrée: +current
+          - Non-Épargne Sortie: -current
+          - Épargne Sortie: +current, -savings  (withdraw from savings -> current)
+          - Épargne Entrée: -current, +savings  (deposit into savings from current)
+        This matches expectation: a 'Sortie Épargne' increases current balance and decreases savings.
+        Savings balance accumulates net movements (positive => more saved, negative => withdrawn).
+        """
+        current_account_balance = 0.0
+        savings_balance = 0.0
+        count_income = 0
+        count_outcome = 0
+
+        for r in range(2, ws.max_row + 1):
+            type_cell = ws.cell(row=r, column=5).value
+            cat_cell = ws.cell(row=r, column=4).value
+            montant_cell = ws.cell(row=r, column=3).value
+            try:
+                amount = float(str(montant_cell).replace(',', '.')) if montant_cell not in (None, "") else 0.0
+            except Exception:
+                amount = 0.0
+
+            if type_cell == "Entrée":
+                count_income += 1
+                if cat_cell == "Épargne":
+                    # Money moved from current -> savings
+                    current_account_balance -= amount
+                    savings_balance += amount
+                else:
+                    current_account_balance += amount
+            elif type_cell == "Sortie":
+                count_outcome += 1
+                if cat_cell == "Épargne":
+                    # Money moved from savings -> current
+                    current_account_balance += amount
+                    savings_balance -= amount
+                else:
+                    current_account_balance -= amount
+
+        # Clear previous stats area (H1:I15)
+        for r in range(1, 16):
+            ws.cell(row=r, column=8).value = None
+            ws.cell(row=r, column=9).value = None
+
+        # Write labels & values
+        header_font = Font(bold=True)
+        ws.cell(row=1, column=8, value="Statistiques").font = header_font
+        stats = [
+            ("Solde Compte Courant", current_account_balance),
+            ("Solde Épargne", savings_balance),
+            ("Nombre Sorties", count_outcome),
+            ("Nombre Entrées", count_income),
+        ]
+        row = 2
+        for label, val in stats:
+            ws.cell(row=row, column=8, value=label)
+            v_cell = ws.cell(row=row, column=9, value=val)
+            if isinstance(val, (int, float)) and row <= 3:  # first two monetary rows
+                v_cell.number_format = "#,##0.00 [$€-fr-FR]"
+            row += 1
+
+        # Auto-adjust column widths (simple heuristic)
+        for col in (8, 9):
+            max_len = 0
+            for r in range(1, row):
+                v = ws.cell(row=r, column=col).value
+                if v is None:
+                    continue
+                l = len(str(v))
+                if l > max_len:
+                    max_len = l
+            ws.column_dimensions[get_column_letter(col)].width = max(14, min(40, max_len + 2))
+
+    def _apply_sheet_fonts(self, ws):
+        """Set header row fonts (bold size 20) and remaining populated rows font size 18.
+
+        Preserves existing font colors (already applied for semantic coloring) by reusing the color attribute.
+        """
+        try:
+            max_col = ws.max_column
+            max_row = ws.max_row
+            # Header row (row 1)
+            for c in range(1, max_col + 1):
+                cell = ws.cell(row=1, column=c)
+                if cell.value in (None, ""):
+                    continue
+                prev_font = cell.font
+                cell.font = Font(bold=True, size=20, color=getattr(prev_font, 'color', None))
+
+            # Body rows
+            for r in range(2, max_row + 1):
+                # Skip entirely empty rows quickly
+                if all(ws.cell(row=r, column=c).value in (None, "") for c in range(1, max_col + 1)):
+                    continue
+                for c in range(1, max_col + 1):
+                    cell = ws.cell(row=r, column=c)
+                    if cell.value in (None, ""):
+                        continue
+                    prev_font = cell.font
+                    cell.font = Font(bold=False, size=18, color=getattr(prev_font, 'color', None))
+        except Exception as e:
+            print(f"Font sizing error: {e}")
+
+    def _find_next_transaction_row(self, ws):
+        """Return the next row index for a new transaction.
+
+        Ignores statistics in columns H/I so they don't create artificial gaps.
+        Scans only columns 1..6 (A-F) for existing data rows.
+        """
+        last_data_row = 1  # header at row 1
+        max_row = ws.max_row
+        for r in range(2, max_row + 1):
+            if any(ws.cell(row=r, column=c).value not in (None, "") for c in range(1, 7)):
+                last_data_row = r
+        return last_data_row + 1
+
+    def _auto_adjust_transaction_columns(self, ws):
+        """Auto size columns A-F based on content length with more generous widths.
+
+        New adaptive rules (character-based Excel width units):
+          A Date:           min 11, max 16 (dates fixed length but give breathing room)
+          B Libellé:        min 20, soft target = max_len+2, hard max 80 (long labels)
+          C Montant:        min 12, max 20 (allow larger numbers / decimals)
+          D Catégorie:      min 16, max 32 (French words & accents)
+          E Type:           min 10, max 16 ("Entrée" / "Sortie")
+          F Prélèvement:    min 14, max 22 ("Oui" / "Non" plus header)
+
+        Strategy:
+          - Scan only data rows (A-F) ignoring stats area.
+          - Compute max text length per column.
+          - Add padding ( +2 or +3 for Libellé ).
+          - Clamp inside new bounds.
+          - If Libellé contains very long outliers ( > 70 chars ), cap at 80 but still wide.
+        """
+        config = {
+            1: {"min": 11, "max": 16, "pad": 2},   # Date
+            2: {"min": 20, "max": 80, "pad": 3},   # Libellé
+            3: {"min": 12, "max": 20, "pad": 2},   # Montant
+            4: {"min": 16, "max": 32, "pad": 2},   # Catégorie
+            5: {"min": 10, "max": 16, "pad": 2},   # Type
+            6: {"min": 14, "max": 22, "pad": 2},   # Prélèvement
+        }
+
+        last_data_row = self._find_next_transaction_row(ws) - 1
+        if last_data_row < 1:
+            return
+
+        for col in range(1, 7):
+            cfg = config[col]
+            max_len = 0
+            # Include header row for measuring
+            for r in range(1, last_data_row + 1):
+                val = ws.cell(row=r, column=col).value
+                if val is None:
+                    continue
+                s = str(val)
+                # For Montant, remove thousand separators just for width logic
+                if col == 3:
+                    s = s.replace('€', '').strip()
+                length = len(s)
+                if length > max_len:
+                    max_len = length
+
+            if max_len == 0:
+                target = cfg["min"]
+            else:
+                target = max_len + cfg["pad"]
+
+            # Special handling for Libellé: don't exceed hard max but allow wide content
+            if col == 2 and max_len > 70:
+                target = cfg["max"]
+
+            # Clamp
+            if target < cfg["min"]:
+                target = cfg["min"]
+            if target > cfg["max"]:
+                target = cfg["max"]
+
+            ws.column_dimensions[get_column_letter(col)].width = target
+    def _apply_fixed_widths(self, ws):
+        """Set fixed widths: A-F => 20, H-I (stats) => 30.
+
+        Leaves other columns unchanged if present. Safe to call multiple times.
+        """
+        try:
+            for col in range(1, 7):  # A-F
+                ws.column_dimensions[get_column_letter(col)].width = 20
+            # Stats columns H (8) & I (9)
+            ws.column_dimensions[get_column_letter(8)].width = 30
+            ws.column_dimensions[get_column_letter(9)].width = 20
+        except Exception as e:
+            print(f"Fixed width error: {e}")
+
+    def _normalize_date_column(self, ws):
+        """Convert textual DD-MM-YYYY (or DD/MM/YYYY) values in column A to real date objects.
+
+        Safe to run repeatedly; skips cells already recognized as dates.
+        """
+        pattern = re.compile(r"^(\d{2})[-/](\d{2})[-/](\d{4})$")
+        for r in range(2, ws.max_row + 1):
+            cell = ws.cell(row=r, column=1)
+            val = cell.value
+            if val is None:
+                continue
+            # If already a date/datetime, ensure number format and continue
+            if isinstance(val, (datetime, date)):
+                try:
+                    cell.number_format = "dd/mm/yyyy"
+                except Exception:
+                    pass
+                continue
+            if isinstance(val, str):
+                m = pattern.match(val.strip())
+                if not m:
+                    continue
+                try:
+                    # Accept either '-' or '/' as separator in stored text
+                    norm = val.strip().replace('/', '-')
+                    d = datetime.strptime(norm, "%d-%m-%Y").date()
+                    cell.value = d
+                    cell.number_format = "dd/mm/yyyy"
+                except Exception:
+                    continue
 
     def _on_date_entry_click(self):
         """Handle click on date entry - prevent immediate calendar closing"""
