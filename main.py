@@ -7,6 +7,12 @@ try:
     from openpyxl.utils import get_column_letter
     from openpyxl.styles import PatternFill, Font
     from openpyxl.chart import PieChart, Reference
+    from openpyxl.chart.legend import Legend  # added legend import
+    try:
+        # Data labels for better readability (percentages inside slices)
+        from openpyxl.chart.label import DataLabelList
+    except Exception:
+        DataLabelList = None
     EXCEL_AVAILABLE = True
 except ImportError:
     EXCEL_AVAILABLE = False
@@ -717,6 +723,12 @@ class App:
             # Clear category selection
             self._clear_category_selection()
 
+            # Reset toggles to default after successful add
+            self.transaction_is_entry = False
+            self.is_prelevement = False
+            self._render_transaction_toggle(self.current_theme)
+            self._render_prelevement_toggle(self.current_theme)
+
         except ValueError:
             print("Invalid date format. Please use DD-MM-YYYY format.")
         except Exception as e:
@@ -956,15 +968,10 @@ class App:
             ("Nombre Prélèvements", count_prelevements),
             ("Montant Total Prélèvements", total_prelevements_amount),
         ]
-
-        # Append per-category stats (only categories that appear, ordered by name)
-        if cat_stats:
-            for cat in sorted(cat_stats.keys()):
-                data = cat_stats[cat]
-                if data["entrees_amount"] != 0.0:
-                    stats.append((f"{cat} Entrées", data["entrees_amount"]))
-                if data["sorties_amount"] != 0.0:
-                    stats.append((f"{cat} Sorties", data["sorties_amount"]))
+        # NOTE (user request): per-category stats removed from H/I area.
+        # We still compute cat_stats above to feed the doughnut chart and
+        # populate temporary columns K/L, but we no longer append the
+        # per-category breakdown lines into the stats list.
 
         # Clear previous stats area sized to new stats length (add a little buffer)
         clear_rows = max(16, len(stats) + 2)
@@ -998,51 +1005,177 @@ class App:
                     max_len = l
             ws.column_dimensions[get_column_letter(col)].width = max(14, min(40, max_len + 2))
 
-        # Create / update doughnut chart for per-category Sorties (only if any)
+        # Create / update improved doughnut chart for per-category Sorties (only if any)
         try:
             sortie_categories = [(cat, data["sorties_amount"]) for cat, data in cat_stats.items() if data["sorties_amount"] > 0]
             if sortie_categories:
-                # Place temporary data starting at column K (11) for chart source to avoid interfering with visible stats
+                # Sort descending by amount
+                sortie_categories.sort(key=lambda x: x[1], reverse=True)
+                total_sorties = sum(amt for _, amt in sortie_categories)
+
+                # Aggregate small categories to keep chart readable
+                MAX_SLICES = 8  # show at most 8 slices (including 'Autres')
+                MIN_PERCENT = 0.03  # 3% threshold for its own slice
+                aggregated = []
+                other_sum = 0.0
+                for cat, amt in sortie_categories:
+                    pct = amt / total_sorties if total_sorties else 0.0
+                    if (len(aggregated) < MAX_SLICES - 1 and pct >= MIN_PERCENT) or len(aggregated) < 3:
+                        aggregated.append((cat, amt))
+                    else:
+                        other_sum += amt
+                if other_sum > 0:
+                    aggregated.append(("Autres", other_sum))
+
+                # Clear any previous temporary data columns (K, L, M) to avoid stale labels
+                for r in range(1, 200):  # reasonable upper bound
+                    ws.cell(row=r, column=11).value = None  # K
+                    ws.cell(row=r, column=12).value = None  # L
+                    ws.cell(row=r, column=13).value = None  # M (percent)
+
                 chart_col_label = 11  # K
                 chart_col_value = 12  # L
+                chart_col_percent = 13  # M (optional % for debugging / external use)
                 ws.cell(row=1, column=chart_col_label, value="Catégorie Sorties")
-                ws.cell(row=1, column=chart_col_value, value="Montant")
+                # Remove explicit 'Montant' wording per user request – keep header blank so it's not used as a series title
+                ws.cell(row=1, column=chart_col_value, value="")
+                ws.cell(row=1, column=chart_col_percent, value="%")
+
                 data_start_row = 2
-                for idx, (cat, amt) in enumerate(sorted(sortie_categories, key=lambda x: x[1], reverse=True), start=data_start_row):
+                for idx, (cat, amt) in enumerate(aggregated, start=data_start_row):
                     ws.cell(row=idx, column=chart_col_label, value=cat)
                     vcell = ws.cell(row=idx, column=chart_col_value, value=amt)
                     vcell.number_format = "#,##0.00 [$€-fr-FR]"
-                data_end_row = data_start_row + len(sortie_categories) - 1
-
-                labels_ref = Reference(ws, min_col=chart_col_label, max_col=chart_col_label, min_row=data_start_row, max_row=data_end_row)
-                values_ref = Reference(ws, min_col=chart_col_value, max_col=chart_col_value, min_row=data_start_row - 1, max_row=data_end_row)
-                pie = PieChart()
-                pie.title = "Sorties par Catégorie"
-                pie.add_data(values_ref, titles_from_data=True)
-                pie.set_categories(labels_ref)
-                # Make it a doughnut
-                if pie.series and hasattr(pie.series[0], 'dLbls'):
-                    pie.type = "pie"
-                try:
-                    pie.holeSize = 60  # openpyxl supports holeSize for doughnut
-                except Exception:
-                    pass
-                # Remove previous charts in the target area (simple heuristic)
-                to_remove = []
-                for obj in ws._charts:
-                    if getattr(obj, 'title', None) and 'Sorties par Catégorie' in str(obj.title):
-                        to_remove.append(obj)
-                for obj in to_remove:
+                    pct_cell = ws.cell(row=idx, column=chart_col_percent, value=(amt / total_sorties) if total_sorties else 0)
                     try:
-                        ws._charts.remove(obj)
+                        pct_cell.number_format = "0.00%"
                     except Exception:
                         pass
-                # Position chart (anchor roughly at O2)
-                pie.height = 14
-                pie.width = 18
+                data_end_row = data_start_row + len(aggregated) - 1
+
+                labels_ref = Reference(ws, min_col=chart_col_label, max_col=chart_col_label, min_row=data_start_row, max_row=data_end_row)
+                # Start values at data_start_row (exclude header row so no series title and the blank header isn't treated as data)
+                values_ref = Reference(ws, min_col=chart_col_value, max_col=chart_col_value, min_row=data_start_row, max_row=data_end_row)
+                pie = PieChart()
+                pie.title = "Sorties par Catégorie"
+                pie.add_data(values_ref, titles_from_data=False)
+                pie.set_categories(labels_ref)
+                # Remove default Excel-generated series name 'Series 1' (gives cleaner tooltips / labels)
+                try:
+                    if pie.series and len(pie.series) > 0:
+                        pie.series[0].title = ""  # blank -> no 'Series 1'
+                except Exception:
+                    pass
+                # Doughnut style
+                try:
+                    pie.holeSize = 55
+                except Exception:
+                    pass
+
+                # Add data labels (percentages only) if supported
+                if DataLabelList is not None:
+                    try:
+                        dll = DataLabelList()
+                        # Show category name inside the slice; keep percentage for readability
+                        dll.showPercent = True
+                        dll.showCatName = True
+                        dll.showVal = False
+                        # Attempt to enlarge data label font
+                        try:
+                            from openpyxl.chart.label import DataLabel
+                            from openpyxl.drawing.text import RichText, Paragraph, ParagraphProperties, CharacterProperties
+                            # Create explicit data labels with larger font size (~14pt => sz=1400)
+                            for i in range(len(aggregated)):
+                                dl = DataLabel(idx=i)
+                                dl.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1400)))])
+                                dll.dLbl.append(dl)
+                        except Exception:
+                            pass
+                        pie.dataLabels = dll
+                    except Exception:
+                        pass
+
+                # Custom color palette for slices (loop if needed)
+                palette = [
+                    "FF5722",  # deep orange
+                    "4CAF50",  # green
+                    "2196F3",  # blue
+                    "9C27B0",  # purple
+                    "FFC107",  # amber
+                    "009688",  # teal
+                    "E91E63",  # pink
+                    "3F51B5",  # indigo
+                    "795548",  # brown (fallbacks)
+                    "607D8B",  # blue grey
+                ]
+                try:
+                    if pie.series:
+                        ser = pie.series[0]
+                        # Ensure data points object list exists
+                        for i, _ in enumerate(aggregated):
+                            try:
+                                pt = ser.dPt[i]
+                            except IndexError:
+                                from openpyxl.chart.series import DataPoint
+                                pt = DataPoint(idx=i)
+                                ser.dPt.append(pt)
+                            try:
+                                from openpyxl.drawing.fill import SolidFillProperties
+                                from openpyxl.drawing.colors import ColorChoice
+                                color_hex = palette[i % len(palette)]
+                                pt.graphicalProperties.solidFill = color_hex
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
+                # Add / style legend with increased font size (16pt)
+                try:
+                    if getattr(pie, 'legend', None) is None:
+                        pie.legend = Legend()
+                    try:
+                        pie.legend.position = 'r'
+                    except Exception:
+                        pass
+                    try:
+                        from openpyxl.drawing.text import RichText, Paragraph, ParagraphProperties, CharacterProperties
+                        pie.legend.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1600)))])
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+
+                # Remove previous charts of same title
+                try:
+                    to_remove = []
+                    for obj in ws._charts:
+                        if getattr(obj, 'title', None) and 'Sorties par Catégorie' in str(obj.title):
+                            to_remove.append(obj)
+                    for obj in to_remove:
+                        try:
+                            ws._charts.remove(obj)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
+                # Resize & place chart
+                pie.height = 18  # taller for readability
+                pie.width = 24   # wider for labels
+
+                # Increase title font size (~20pt => sz=2000)
+                try:
+                    from openpyxl.drawing.text import ParagraphProperties, CharacterProperties
+                    if getattr(pie, 'title', None) and getattr(pie.title, 'tx', None) and getattr(pie.title.tx, 'rich', None):
+                        for p in pie.title.tx.rich.p:
+                            if p.pPr is None:
+                                p.pPr = ParagraphProperties()
+                            p.pPr.defRPr = CharacterProperties(sz=2000)
+                except Exception:
+                    pass
                 ws.add_chart(pie, "O2")
         except Exception as e:
-            print(f"Warning: could not create doughnut chart: {e}")
+            print(f"Warning: could not create improved doughnut chart: {e}")
 
     def _apply_sheet_fonts(self, ws):
         """Set header row fonts (bold size 20) and remaining populated rows font size 18.
@@ -1151,7 +1284,7 @@ class App:
 
             ws.column_dimensions[get_column_letter(col)].width = target
     def _apply_fixed_widths(self, ws):
-        """Set fixed widths: A-F => 20, H-I (stats) => 30.
+        """Set fixed widths: A-F => 20, H=40, I=20, K=35 (chart/data area).
 
         Leaves other columns unchanged if present. Safe to call multiple times.
         """
@@ -1159,8 +1292,12 @@ class App:
             for col in range(1, 7):  # A-F
                 ws.column_dimensions[get_column_letter(col)].width = 20
             # Stats columns H (8) & I (9)
-            ws.column_dimensions[get_column_letter(8)].width = 35
-            ws.column_dimensions[get_column_letter(9)].width = 20
+            ws.column_dimensions[get_column_letter(8)].width = 40  # H
+            ws.column_dimensions[get_column_letter(9)].width = 20  # I
+            # Category chart source data column K (11)
+            ws.column_dimensions[get_column_letter(11)].width = 30  # K
+            ws.column_dimensions[get_column_letter(12)].width = 20  # L
+            ws.column_dimensions[get_column_letter(13)].width = 12  # M
         except Exception as e:
             print(f"Fixed width error: {e}")
 
