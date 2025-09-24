@@ -6,6 +6,7 @@ try:
     from openpyxl import Workbook, load_workbook
     from openpyxl.utils import get_column_letter
     from openpyxl.styles import PatternFill, Font
+    from openpyxl.chart import PieChart, Reference
     EXCEL_AVAILABLE = True
 except ImportError:
     EXCEL_AVAILABLE = False
@@ -329,6 +330,7 @@ class App:
 
         # Bind click events to close calendar when clicking inside the app window
         self.root.bind("<Button-1>", self._maybe_close_calendar, add="+")
+
 
     def apply_theme(self):
         theme = DARK_THEME if self.is_dark_mode else LIGHT_THEME
@@ -699,6 +701,7 @@ class App:
             # Write to Excel
             self._write_to_excel(date_value, libelle_value, montant_value, category_value, transaction_type, prelevement_status, year, month)
 
+
             print(f"Successfully added: Date={date_value}, Libellé={libelle_value}, Montant={montant_value}, Catégorie={category_value}, Type={transaction_type}, Prélèvement={prelevement_status}")
 
             # Clear the form after adding
@@ -724,9 +727,15 @@ class App:
         if not EXCEL_AVAILABLE:
             return
 
-        # Create file path
+        # Create directory for accounting files if it doesn't exist
+        base_dir = Path(__file__).resolve().parent / "dossier_compta"
+        try:
+            base_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            print(f"Warning: could not create directory {base_dir}: {e}")
+        # Create file path inside the subdirectory
         filename = f"Compta_{year}.xlsx"
-        file_path = Path(filename)
+        file_path = base_dir / filename
 
         # Sheet name format: MM_YYYY
         sheet_name = f"{month:02d}_{year}"
@@ -835,7 +844,11 @@ class App:
                 except Exception as e:
                     print(f"Warning: could not apply font sizing: {e}")
                 wb.save(file_path)
-                print(f"Data saved to {filename}, sheet {sheet_name}")
+                try:
+                    rel_path = file_path.relative_to(Path(__file__).resolve().parent)
+                except Exception:
+                    rel_path = file_path
+                print(f"Data saved to {rel_path}, sheet {sheet_name}")
                 break
 
             except PermissionError:
@@ -870,16 +883,31 @@ class App:
           - Épargne Entrée: -current, +savings  (deposit into savings from current)
         This matches expectation: a 'Sortie Épargne' increases current balance and decreases savings.
         Savings balance accumulates net movements (positive => more saved, negative => withdrawn).
+
+        Additional statistics added:
+          - Montant Total Sorties (sum of all Sortie amounts)
+          - Montant Total Entrées (sum of all Entrée amounts)
+          - Nombre Prélèvements (count where Prélèvement == 'Oui')
+          - Montant Total Prélèvements (sum of amounts where Prélèvement == 'Oui')
         """
         current_account_balance = 0.0
         savings_balance = 0.0
         count_income = 0
         count_outcome = 0
+        total_sorties_amount = 0.0
+        total_entrees_amount = 0.0
+        count_prelevements = 0
+        total_prelevements_amount = 0.0
+
+        # Per-category aggregation
+        # Structure: cat_stats[category] = {"entrees_amount": float, "sorties_amount": float}
+        cat_stats = {}
 
         for r in range(2, ws.max_row + 1):
             type_cell = ws.cell(row=r, column=5).value
             cat_cell = ws.cell(row=r, column=4).value
             montant_cell = ws.cell(row=r, column=3).value
+            prelevement_cell = ws.cell(row=r, column=6).value
             try:
                 amount = float(str(montant_cell).replace(',', '.')) if montant_cell not in (None, "") else 0.0
             except Exception:
@@ -887,6 +915,7 @@ class App:
 
             if type_cell == "Entrée":
                 count_income += 1
+                total_entrees_amount += amount
                 if cat_cell == "Épargne":
                     # Money moved from current -> savings
                     current_account_balance -= amount
@@ -895,6 +924,7 @@ class App:
                     current_account_balance += amount
             elif type_cell == "Sortie":
                 count_outcome += 1
+                total_sorties_amount += amount
                 if cat_cell == "Épargne":
                     # Money moved from savings -> current
                     current_account_balance += amount
@@ -902,26 +932,58 @@ class App:
                 else:
                     current_account_balance -= amount
 
-        # Clear previous stats area (H1:I15)
-        for r in range(1, 16):
+            if prelevement_cell == "Oui":
+                count_prelevements += 1
+                total_prelevements_amount += amount
+
+            # Track per category (ignore empty category cells)
+            if cat_cell:
+                if cat_cell not in cat_stats:
+                    cat_stats[cat_cell] = {"entrees_amount": 0.0, "sorties_amount": 0.0}
+                if type_cell == "Entrée":
+                    cat_stats[cat_cell]["entrees_amount"] += amount
+                elif type_cell == "Sortie":
+                    cat_stats[cat_cell]["sorties_amount"] += amount
+
+        # Build stats list (global first)
+        stats = [
+            ("Solde Compte Courant", current_account_balance),
+            ("Solde Épargne", savings_balance),
+            ("Nombre Sorties", count_outcome),
+            ("Nombre Entrées", count_income),
+            ("Montant Total Sorties", total_sorties_amount),
+            ("Montant Total Entrées", total_entrees_amount),
+            ("Nombre Prélèvements", count_prelevements),
+            ("Montant Total Prélèvements", total_prelevements_amount),
+        ]
+
+        # Append per-category stats (only categories that appear, ordered by name)
+        if cat_stats:
+            for cat in sorted(cat_stats.keys()):
+                data = cat_stats[cat]
+                if data["entrees_amount"] != 0.0:
+                    stats.append((f"{cat} Entrées", data["entrees_amount"]))
+                if data["sorties_amount"] != 0.0:
+                    stats.append((f"{cat} Sorties", data["sorties_amount"]))
+
+        # Clear previous stats area sized to new stats length (add a little buffer)
+        clear_rows = max(16, len(stats) + 2)
+        for r in range(1, clear_rows + 1):
             ws.cell(row=r, column=8).value = None
             ws.cell(row=r, column=9).value = None
 
         # Write labels & values
         header_font = Font(bold=True)
         ws.cell(row=1, column=8, value="Statistiques").font = header_font
-        stats = [
-            ("Solde Compte Courant", current_account_balance),
-            ("Solde Épargne", savings_balance),
-            ("Nombre Sorties", count_outcome),
-            ("Nombre Entrées", count_income),
-        ]
         row = 2
         for label, val in stats:
             ws.cell(row=row, column=8, value=label)
             v_cell = ws.cell(row=row, column=9, value=val)
-            if isinstance(val, (int, float)) and row <= 3:  # first two monetary rows
-                v_cell.number_format = "#,##0.00 [$€-fr-FR]"
+            if isinstance(val, (int, float)) and (label.startswith("Solde") or label.startswith("Montant")):
+                try:
+                    v_cell.number_format = "#,##0.00 [$€-fr-FR]"
+                except Exception:
+                    pass
             row += 1
 
         # Auto-adjust column widths (simple heuristic)
@@ -935,6 +997,52 @@ class App:
                 if l > max_len:
                     max_len = l
             ws.column_dimensions[get_column_letter(col)].width = max(14, min(40, max_len + 2))
+
+        # Create / update doughnut chart for per-category Sorties (only if any)
+        try:
+            sortie_categories = [(cat, data["sorties_amount"]) for cat, data in cat_stats.items() if data["sorties_amount"] > 0]
+            if sortie_categories:
+                # Place temporary data starting at column K (11) for chart source to avoid interfering with visible stats
+                chart_col_label = 11  # K
+                chart_col_value = 12  # L
+                ws.cell(row=1, column=chart_col_label, value="Catégorie Sorties")
+                ws.cell(row=1, column=chart_col_value, value="Montant")
+                data_start_row = 2
+                for idx, (cat, amt) in enumerate(sorted(sortie_categories, key=lambda x: x[1], reverse=True), start=data_start_row):
+                    ws.cell(row=idx, column=chart_col_label, value=cat)
+                    vcell = ws.cell(row=idx, column=chart_col_value, value=amt)
+                    vcell.number_format = "#,##0.00 [$€-fr-FR]"
+                data_end_row = data_start_row + len(sortie_categories) - 1
+
+                labels_ref = Reference(ws, min_col=chart_col_label, max_col=chart_col_label, min_row=data_start_row, max_row=data_end_row)
+                values_ref = Reference(ws, min_col=chart_col_value, max_col=chart_col_value, min_row=data_start_row - 1, max_row=data_end_row)
+                pie = PieChart()
+                pie.title = "Sorties par Catégorie"
+                pie.add_data(values_ref, titles_from_data=True)
+                pie.set_categories(labels_ref)
+                # Make it a doughnut
+                if pie.series and hasattr(pie.series[0], 'dLbls'):
+                    pie.type = "pie"
+                try:
+                    pie.holeSize = 60  # openpyxl supports holeSize for doughnut
+                except Exception:
+                    pass
+                # Remove previous charts in the target area (simple heuristic)
+                to_remove = []
+                for obj in ws._charts:
+                    if getattr(obj, 'title', None) and 'Sorties par Catégorie' in str(obj.title):
+                        to_remove.append(obj)
+                for obj in to_remove:
+                    try:
+                        ws._charts.remove(obj)
+                    except Exception:
+                        pass
+                # Position chart (anchor roughly at O2)
+                pie.height = 14
+                pie.width = 18
+                ws.add_chart(pie, "O2")
+        except Exception as e:
+            print(f"Warning: could not create doughnut chart: {e}")
 
     def _apply_sheet_fonts(self, ws):
         """Set header row fonts (bold size 20) and remaining populated rows font size 18.
@@ -1051,7 +1159,7 @@ class App:
             for col in range(1, 7):  # A-F
                 ws.column_dimensions[get_column_letter(col)].width = 20
             # Stats columns H (8) & I (9)
-            ws.column_dimensions[get_column_letter(8)].width = 30
+            ws.column_dimensions[get_column_letter(8)].width = 35
             ws.column_dimensions[get_column_letter(9)].width = 20
         except Exception as e:
             print(f"Fixed width error: {e}")
