@@ -1014,16 +1014,21 @@ class App:
 
             # Row 1 title for outcome section
             ws.cell(row=1, column=11, value="Outcome")
-            # Rows 2-13 categories outcome values
+            # Rows 2-13 categories outcome values (skip zeros -> leave blank)
             for i, cat in enumerate(CATEGORY_VALUES):
                 row_idx = 2 + i
-                ws.cell(row=row_idx, column=11, value=cat)
                 amt_sortie = cat_stats.get(cat, {}).get("sorties_amount", 0)
-                vcell = ws.cell(row=row_idx, column=12, value=amt_sortie)
-                try:
-                    vcell.number_format = "#,##0.00 [$€-fr-FR]"
-                except Exception:
-                    pass
+                if amt_sortie not in (0, 0.0, None):
+                    ws.cell(row=row_idx, column=11, value=cat)
+                    vcell = ws.cell(row=row_idx, column=12, value=amt_sortie)
+                    try:
+                        vcell.number_format = "#,##0.00 [$€-fr-FR]"
+                    except Exception:
+                        pass
+                else:
+                    # Ensure cells remain empty if zero
+                    ws.cell(row=row_idx, column=11, value=None)
+                    ws.cell(row=row_idx, column=12, value=None)
 
             # Blank separator row 14 (leave empty)
             # Rows 15-23 left intentionally blank after refactor
@@ -1033,16 +1038,20 @@ class App:
                 income_title_cell.font = Font(bold=True, size=20)
             except Exception:
                 pass
-            # Rows 22-33 categories income values
+            # Rows 22-33 categories income values (skip zeros -> leave blank)
             for i, cat in enumerate(CATEGORY_VALUES):
                 row_idx = 22 + i
-                ws.cell(row=row_idx, column=11, value=cat)
                 amt_entree = cat_stats.get(cat, {}).get("entrees_amount", 0)
-                vcell = ws.cell(row=row_idx, column=12, value=amt_entree)
-                try:
-                    vcell.number_format = "#,##0.00 [$€-fr-FR]"
-                except Exception:
-                    pass
+                if amt_entree not in (0, 0.0, None):
+                    ws.cell(row=row_idx, column=11, value=cat)
+                    vcell = ws.cell(row=row_idx, column=12, value=amt_entree)
+                    try:
+                        vcell.number_format = "#,##0.00 [$€-fr-FR]"
+                    except Exception:
+                        pass
+                else:
+                    ws.cell(row=row_idx, column=11, value=None)
+                    ws.cell(row=row_idx, column=12, value=None)
 
             # -------- Outcome Chart (Sorties) --------
             labels_ref_out = Reference(ws, min_col=11, max_col=11, min_row=2, max_row=13)
