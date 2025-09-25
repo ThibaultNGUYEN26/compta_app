@@ -7,7 +7,7 @@ try:
     from openpyxl import Workbook, load_workbook
     from openpyxl.utils import get_column_letter
     from openpyxl.styles import PatternFill, Font
-    from openpyxl.chart import PieChart, Reference
+    from openpyxl.chart import PieChart, BarChart, Reference
     from openpyxl.chart.legend import Legend  # added legend import
     try:
         # Data labels for better readability (percentages inside slices)
@@ -1433,6 +1433,68 @@ class App:
                 pass
             ws.add_chart(pie_out, "O2")
 
+            # -------- Summary Bar Chart (Income vs Outcome) --------
+            try:
+                # Place total outcome (sorties) and total income (entrées) into temporary cells for chart source
+                # M/N (13/14) previously used but conflicted with charts; now using Y/Z (25/26)
+                # Clear legacy temp cells if present (columns 13/14 rows 2-3)
+                for legacy_col in (13, 14):
+                    for legacy_row in (2, 3):
+                        try:
+                            ws.cell(row=legacy_row, column=legacy_col).value = None
+                        except Exception:
+                            pass
+                LABEL_COL = 25  # Y
+                VALUE_COL = 26  # Z
+                ws.cell(row=2, column=LABEL_COL, value="Outcome Total")
+                ws.cell(row=3, column=LABEL_COL, value="Income Total")
+                ws.cell(row=2, column=VALUE_COL, value=total_sorties_amount)
+                ws.cell(row=3, column=VALUE_COL, value=total_entrees_amount)
+                bar_values_ref = Reference(ws, min_col=VALUE_COL, max_col=VALUE_COL, min_row=2, max_row=3)
+                bar_labels_ref = Reference(ws, min_col=LABEL_COL, max_col=LABEL_COL, min_row=2, max_row=3)
+                bar_chart = BarChart()
+                bar_chart.title = "Entrées / Sorties"
+                bar_chart.add_data(bar_values_ref, titles_from_data=False)
+                bar_chart.set_categories(bar_labels_ref)
+                bar_chart.y_axis.title = "Montant (€)"
+                bar_chart.x_axis.title = "Type"
+                bar_chart.type = "col"
+                bar_chart.style = 2
+                # Adjust size similar proportion to pie charts but a bit narrower
+                bar_chart.width = CHART_WIDTH * 0.75
+                bar_chart.height = CHART_HEIGHT
+                # Color bars: row 2 (Outcome) red, row 3 (Income) green
+                try:
+                    if bar_chart.series:
+                        ser = bar_chart.series[0]
+                        from openpyxl.chart.series import DataPoint
+                        # Outcome (index 0)
+                        dp0 = DataPoint(idx=0)
+                        dp0.graphicalProperties.solidFill = "C62828"  # red
+                        # Income (index 1)
+                        dp1 = DataPoint(idx=1)
+                        dp1.graphicalProperties.solidFill = "2E7D32"  # green
+                        ser.dPt.append(dp0)
+                        ser.dPt.append(dp1)
+                except Exception:
+                    pass
+                # Remove previous bar chart if exists
+                try:
+                    to_remove = []
+                    for obj in ws._charts:
+                        if getattr(obj, 'title', None) and 'Entrées / Sorties' in str(obj.title):
+                            to_remove.append(obj)
+                    for obj in to_remove:
+                        ws._charts.remove(obj)
+                except Exception:
+                    pass
+                # Place bar chart to the right of outcome pie (which starts at O2).
+                # Outcome pie roughly spans O2 -> (depending on width). We'll anchor bar chart at "Z2" for spacing.
+                # Anchor the bar chart further right (AC2) so it doesn't overlap with the Y/Z data columns
+                ws.add_chart(bar_chart, "AC2")
+            except Exception as e:
+                print(f"Warning: could not create income/outcome bar chart: {e}")
+
             # -------- Income Chart (Entrées) --------
             labels_ref_in = Reference(ws, min_col=11, max_col=11, min_row=16, max_row=27)
             values_ref_in = Reference(ws, min_col=12, max_col=12, min_row=16, max_row=27)
@@ -1661,6 +1723,8 @@ class App:
             ws.column_dimensions[get_column_letter(11)].width = 30  # K
             ws.column_dimensions[get_column_letter(12)].width = 20  # L
             ws.column_dimensions[get_column_letter(13)].width = 12  # M
+            ws.column_dimensions[get_column_letter(25)].width = 20  # Y
+            ws.column_dimensions[get_column_letter(26)].width = 20  # Z
         except Exception as e:
             print(f"Fixed width error: {e}")
 

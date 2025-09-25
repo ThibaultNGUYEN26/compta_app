@@ -1,2 +1,3 @@
 __pycache__/
-*.xlsx
+dossier_compta/
+settings.json
