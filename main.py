@@ -58,6 +58,10 @@ TOGGLE_MIN_HEIGHT = 20
 TOGGLE_MAX_HEIGHT = 56  # Prevents oversized toggles on huge windows
 TOGGLE_ASPECT_RATIO = 1.9  # width = height * ratio
 
+# Path display left margin tuning (pixels)
+PATH_LEFT_MARGIN_WIDE = 80
+PATH_LEFT_MARGIN_NARROW = 50
+
 LIGHT_THEME = {
     "bg": "#f0f0f0",
     "fg": "#333333",
@@ -351,7 +355,7 @@ class App:
         # Hint label (goes above in narrow mode, inline when wide)
         self.compta_path_hint = Label(
             self.path_container,
-            text="Emplacement du dossier compta (Excel)",
+            text="Emplacement du dossier compta (Excel):",
             anchor="center",
             bg=LIGHT_THEME["bg"],
             fg=LIGHT_THEME["fg"],
@@ -363,8 +367,8 @@ class App:
         self.compta_path_label = Label(
             self.path_container,
             text=self._format_compta_path_for_label(self._compta_base_dir),
-            anchor="w",
-            justify="left",
+            anchor="center",
+            justify="center",
             bg=LIGHT_THEME["bg"],
             fg=LIGHT_THEME["fg"],
             font=self.label_font,
@@ -806,9 +810,9 @@ class App:
             for i in range(3):
                 cont.grid_columnconfigure(i, weight=0)
             cont.grid_columnconfigure(1, weight=1)
-            self.compta_path_hint.configure(anchor='w')
+            self.compta_path_hint.configure(anchor='center')
             self.compta_path_hint.grid(row=0, column=0, padx=(4,8), pady=0, sticky='w')
-            self.compta_path_label.configure(wraplength=0, anchor='w', justify='left')
+            self.compta_path_label.configure(wraplength=0, anchor='center', justify='center')
             self.compta_path_label.grid(row=0, column=1, padx=(0,12), sticky='ew')
             self.change_path_button.grid(row=0, column=2, padx=(0,6), sticky='e')
         else:
@@ -818,7 +822,7 @@ class App:
             cont.grid_columnconfigure(2, weight=0)
             self.compta_path_hint.configure(anchor='center')
             self.compta_path_hint.grid(row=0, column=0, columnspan=3, pady=(0,6))
-            self.compta_path_label.configure(wraplength=480, anchor='w', justify='left')
+            self.compta_path_label.configure(wraplength=480, anchor='center', justify='center')
             self.compta_path_label.grid(row=1, column=0, columnspan=2, sticky='ew')
             self.change_path_button.grid(row=1, column=2, padx=(12,4), sticky='e')
         # Force geometry update for smoother transitions
@@ -901,12 +905,17 @@ class App:
         """Write data to Excel file with the specified structure"""
         if not EXCEL_AVAILABLE:
             return
-        # Ensure current base directory exists (user-configurable)
+        # Lazy ensure current base directory exists (user-configurable) ONLY when writing
         base_dir = self._compta_base_dir
-        try:
-            base_dir.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            print(f"Warning: could not create directory {base_dir}: {e}")
+        if not base_dir.exists():
+            try:
+                base_dir.mkdir(parents=True, exist_ok=True)
+                print(f"Création du dossier compta: {base_dir}")
+                # Refresh label to remove the 'sera créé' hint if present
+                if hasattr(self, 'compta_path_label'):
+                    self.compta_path_label.configure(text=self._format_compta_path_for_label(base_dir))
+            except Exception as e:
+                print(f"Warning: could not create directory {base_dir}: {e}")
         # Create file path inside the subdirectory
         filename = f"Compta_{year}.xlsx"
         file_path = base_dir / filename
@@ -1085,21 +1094,21 @@ class App:
             return
         try:
             new_parent = Path(selected)
+            # Do NOT create the compta folder or even the chosen parent (unless parent truly missing) yet.
+            # Folder creation is deferred until a first line is added (lazy creation).
             if not new_parent.exists():
+                # We still need the parent directory itself to exist to avoid user confusion, create parent only.
                 try:
                     new_parent.mkdir(parents=True, exist_ok=True)
                 except Exception as e:
-                    print(f"Impossible de créer le dossier sélectionné: {e}")
+                    print(f"Impossible de créer le dossier parent sélectionné: {e}")
                     return
             self._chosen_parent_dir = new_parent
             self._compta_base_dir = self._compute_compta_base_dir()
-            try:
-                self._compta_base_dir.mkdir(parents=True, exist_ok=True)
-            except Exception as e:
-                print(f"Warning: could not create compta directory: {e}")
-            # Update label regardless of directory creation success
+            # Update label to reflect future path (not yet created if missing)
             if hasattr(self, 'compta_path_label'):
-                self.compta_path_label.configure(text=self._format_compta_path_for_label(self._compta_base_dir))
+                label_text = self._format_compta_path_for_label(self._compta_base_dir)
+                self.compta_path_label.configure(text=label_text)
             # Persist updated setting immediately
             try:
                 self._save_settings()
