@@ -1,4 +1,5 @@
-﻿from pathlib import Path
+from pathlib import Path
+import json
 from datetime import date, datetime
 import re
 import calendar as _calendar
@@ -29,6 +30,7 @@ from tkinter import (
     Tk,
     TclError,
     Toplevel,
+    filedialog,
 )
 from tkinter import ttk
 from tkinter import font as tkfont
@@ -36,18 +38,7 @@ from tkinter import font as tkfont
 ICON_SUBSAMPLE = 2
 ENTRY_NAMES = ["Date", "Libellé", "Montant", "Catégorie"]
 CATEGORY_VALUES = [
-    "Loyer",
-    "Courses",
-    "Loisirs",
-    "Transport",
-    "Santé",
-    "Abonnements",
-    "Restaurants",
-    "Cadeaux",
-    "Épargne",
-    "Salaire",
-    "Remboursement",
-    "Autre",
+    "Loyer","Courses","Loisirs","Transport","Santé","Abonnements","Restaurants","Cadeaux","Épargne","Salaire","Remboursement","Autre",
 ]
 FONT_MIN_SIZE = 10
 FONT_MAX_SIZE = 18
@@ -112,6 +103,7 @@ class App:
         self.light_mode_icon = light_icon.subsample(ICON_SUBSAMPLE, ICON_SUBSAMPLE)
 
         self.is_dark_mode = False
+        import json
         self.current_theme = LIGHT_THEME
 
         self.label_font = tkfont.Font(family=FONT_FAMILY, size=FONT_MIN_SIZE)
@@ -331,6 +323,80 @@ class App:
             cursor="hand2"
         )
         self.add_button.grid(row=3, column=0, columnspan=4, pady=(20, 0))
+        # Focus Libellé by default when window opens
+        try:
+            self.root.after(50, lambda: (self.libelle_entry.focus_set(), self.libelle_entry.icursor('end')))
+        except Exception:
+            pass
+        # --- Path display & change button section (responsive) ---
+        self._default_base_parent = Path(__file__).resolve().parent
+        self._chosen_parent_dir = self._default_base_parent
+        self._compta_folder_name = "dossier_compta"
+        # Settings file path & first-run flag
+        self._settings_path = Path(__file__).resolve().parent / "settings.json"
+        self._first_run = False
+        # Load persisted settings BEFORE computing base dir / building path UI
+        try:
+            self._load_settings()
+        except Exception:
+            # On any load failure, treat as first run with defaults
+            self._first_run = True
+        # Compute effective base directory AFTER potential settings load modifications
+        self._compta_base_dir = self._compute_compta_base_dir()
+
+        self.path_container = Frame(self.entry_frame, bg=LIGHT_THEME["bg"])
+        self.path_container.grid(row=4, column=0, columnspan=4, sticky="ew", pady=(14, 0))
+        for i in range(3):
+            self.path_container.grid_columnconfigure(i, weight=0)
+        # Hint label (goes above in narrow mode, inline when wide)
+        self.compta_path_hint = Label(
+            self.path_container,
+            text="Emplacement du dossier compta (Excel)",
+            anchor="center",
+            bg=LIGHT_THEME["bg"],
+            fg=LIGHT_THEME["fg"],
+            font=(FONT_FAMILY, max(FONT_MIN_SIZE-1, 9)),
+            padx=4,
+        )
+        self.labels.append(self.compta_path_hint)
+
+        self.compta_path_label = Label(
+            self.path_container,
+            text=self._format_compta_path_for_label(self._compta_base_dir),
+            anchor="w",
+            justify="left",
+            bg=LIGHT_THEME["bg"],
+            fg=LIGHT_THEME["fg"],
+            font=self.label_font,
+            wraplength=480,
+            padx=6,
+        )
+        self.compta_path_label.bind("<Configure>", lambda e: self._update_path_layout())
+        self.labels.append(self.compta_path_label)
+
+        self.change_path_button = Button(
+            self.path_container,
+            text="Changer...",
+            command=self._choose_compta_directory,
+            relief="flat",
+            borderwidth=0,
+            padx=12,
+            pady=4,
+            bg=LIGHT_THEME["entry_bg"],
+            fg=LIGHT_THEME["entry_fg"],
+            activebackground=LIGHT_THEME["toggle_track"],
+            activeforeground=LIGHT_THEME["toggle_thumb"],
+            font=self.label_font,
+            cursor="hand2"
+        )
+
+        # Initial layout (will be refined in _update_path_layout)
+        self.compta_path_hint.grid(row=0, column=0, columnspan=3, pady=(0,4), sticky="n")
+        self.compta_path_label.grid(row=1, column=0, columnspan=2, sticky="ew")
+        self.change_path_button.grid(row=1, column=2, padx=(12, 4), sticky="e")
+        self.path_container.grid_columnconfigure(0, weight=1)
+        self.path_container.grid_columnconfigure(1, weight=0)
+        self.path_container.grid_columnconfigure(2, weight=0)
 
         self.apply_theme()
         self._update_fonts()
@@ -406,6 +472,34 @@ class App:
                 activebackground=theme["toggle_track"],
                 activeforeground=theme["toggle_thumb"]
             )
+        if hasattr(self, 'change_path_button'):
+            self.change_path_button.configure(
+                bg=theme["entry_bg"],
+                fg=theme["entry_fg"],
+                activebackground=theme["toggle_track"],
+                activeforeground=theme["toggle_thumb"]
+            )
+        # Path container & labels
+        if hasattr(self, 'path_container') and self.path_container:
+            try:
+                self.path_container.configure(bg=theme["bg"])
+            except Exception:
+                pass
+        if hasattr(self, 'compta_path_hint') and self.compta_path_hint:
+            try:
+                self.compta_path_hint.configure(bg=theme["bg"], fg=theme["fg"])
+            except Exception:
+                pass
+        if hasattr(self, 'compta_path_label') and self.compta_path_label:
+            try:
+                self.compta_path_label.configure(bg=theme["bg"], fg=theme["fg"])
+            except Exception:
+                pass
+        # Re-run layout to ensure correct geometry with potential font/color adjustments
+        try:
+            self._update_path_layout()
+        except Exception:
+            pass
 
         if self.category_combobox is not None:
             self.style.configure(
@@ -618,6 +712,11 @@ class App:
     def _on_resize(self, event):
         if event.widget is self.root:
             self._update_fonts()
+            # Update responsive path layout after fonts/size change
+            try:
+                self._update_path_layout()
+            except Exception:
+                pass
 
     def _update_fonts(self):
         width = max(self.root.winfo_width(), self.root.winfo_reqwidth())
@@ -639,6 +738,8 @@ class App:
         # Update add button font
         if hasattr(self, 'add_button'):
             self.add_button.configure(font=self.label_font)
+        if hasattr(self, 'change_path_button'):
+            self.change_path_button.configure(font=self.label_font)
 
         if self.category_combobox is not None:
             self.category_combobox.configure(font=self.entry_font)
@@ -677,6 +778,54 @@ class App:
             self._render_prelevement_toggle(self.current_theme)
         if self.calendar_win is not None:
             self._build_calendar_body()
+        # Also adjust path layout once sizes settle
+        try:
+            self._update_path_layout()
+        except Exception:
+            pass
+
+    def _update_path_layout(self):
+        """Responsive layout for path section: stacked (hint above) when narrow, inline when wide."""
+        if not hasattr(self, 'path_container'):
+            return
+        cont = self.path_container
+        width = cont.winfo_width()
+        if width <= 1:  # Not yet rendered; schedule later
+            self.root.after(50, self._update_path_layout)
+            return
+        # Clear current grid placements
+        try:
+            self.compta_path_hint.grid_forget()
+            self.compta_path_label.grid_forget()
+            self.change_path_button.grid_forget()
+        except Exception:
+            pass
+        threshold = 900
+        # Wide mode: all in one line
+        if width >= threshold:
+            for i in range(3):
+                cont.grid_columnconfigure(i, weight=0)
+            cont.grid_columnconfigure(1, weight=1)
+            self.compta_path_hint.configure(anchor='w')
+            self.compta_path_hint.grid(row=0, column=0, padx=(4,8), pady=0, sticky='w')
+            self.compta_path_label.configure(wraplength=0, anchor='w', justify='left')
+            self.compta_path_label.grid(row=0, column=1, padx=(0,12), sticky='ew')
+            self.change_path_button.grid(row=0, column=2, padx=(0,6), sticky='e')
+        else:
+            # Stacked mode
+            cont.grid_columnconfigure(0, weight=1)
+            cont.grid_columnconfigure(1, weight=0)
+            cont.grid_columnconfigure(2, weight=0)
+            self.compta_path_hint.configure(anchor='center')
+            self.compta_path_hint.grid(row=0, column=0, columnspan=3, pady=(0,6))
+            self.compta_path_label.configure(wraplength=480, anchor='w', justify='left')
+            self.compta_path_label.grid(row=1, column=0, columnspan=2, sticky='ew')
+            self.change_path_button.grid(row=1, column=2, padx=(12,4), sticky='e')
+        # Force geometry update for smoother transitions
+        try:
+            cont.update_idletasks()
+        except Exception:
+            pass
 
     def _add_row(self):
         """Handle adding a new row with the current form data"""
@@ -727,6 +876,12 @@ class App:
             self._update_montant_appearance()
             self.category_var.set("")
             # Keep the date as it might be reused
+            # Return focus to libellé for rapid consecutive entry
+            try:
+                self.libelle_entry.focus_set()
+                self.libelle_entry.icursor('end')
+            except Exception:
+                pass
 
             # Clear category selection
             self._clear_category_selection()
@@ -746,9 +901,8 @@ class App:
         """Write data to Excel file with the specified structure"""
         if not EXCEL_AVAILABLE:
             return
-
-        # Create directory for accounting files if it doesn't exist
-        base_dir = Path(__file__).resolve().parent / "dossier_compta"
+        # Ensure current base directory exists (user-configurable)
+        base_dir = self._compta_base_dir
         try:
             base_dir.mkdir(parents=True, exist_ok=True)
         except Exception as e:
@@ -888,9 +1042,142 @@ class App:
                 print(f"Error writing to Excel: {e}")
                 raise
 
+    # ------------------ Compta Directory Handling ------------------
+    def _compute_compta_base_dir(self):
+        """Return the effective dossier_compta directory under the chosen parent.
+
+        If the chosen parent already ends with the target folder name, use it directly.
+        """
+        try:
+            if self._chosen_parent_dir.name == self._compta_folder_name:
+                return self._chosen_parent_dir
+            return self._chosen_parent_dir / self._compta_folder_name
+        except Exception:
+            return Path(__file__).resolve().parent / self._compta_folder_name
+
+    def _format_compta_path_for_label(self, path: Path) -> str:
+        """Format path for label display.
+
+        Simple right truncation with '...' suffix when exceeding max length.
+        Keeps the beginning (most informative root) and trims the tail.
+        """
+        s = str(path)
+        # Allow external tuning if desired later
+        max_len = 70
+        if len(s) <= max_len:
+            return s
+        if max_len <= 3:
+            return s[:max_len]
+        return s[: max_len - 3] + '...'
+
+    def _choose_compta_directory(self):
+        """Open a dialog to let user pick the parent directory for the compta folder."""
+        try:
+            initial = str(self._chosen_parent_dir)
+        except Exception:
+            initial = str(Path.home())
+        try:
+            selected = filedialog.askdirectory(title="Choisir le dossier parent pour 'dossier_compta'", initialdir=initial)
+        except Exception as e:
+            print(f"Dialog error: {e}")
+            return
+        if not selected:
+            return
+        try:
+            new_parent = Path(selected)
+            if not new_parent.exists():
+                try:
+                    new_parent.mkdir(parents=True, exist_ok=True)
+                except Exception as e:
+                    print(f"Impossible de créer le dossier sélectionné: {e}")
+                    return
+            self._chosen_parent_dir = new_parent
+            self._compta_base_dir = self._compute_compta_base_dir()
+            try:
+                self._compta_base_dir.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                print(f"Warning: could not create compta directory: {e}")
+            # Update label regardless of directory creation success
+            if hasattr(self, 'compta_path_label'):
+                self.compta_path_label.configure(text=self._format_compta_path_for_label(self._compta_base_dir))
+            # Persist updated setting immediately
+            try:
+                self._save_settings()
+            except Exception as e:
+                print(f"Could not save settings: {e}")
+        except Exception as e:
+            print(f"Erreur lors de la mise à jour du chemin: {e}")
     def toggle_theme(self):
         self.is_dark_mode = not self.is_dark_mode
         self.apply_theme()
+        # Persist theme preference
+        try:
+            self._save_settings()
+        except Exception as e:
+            print(f"Could not save settings: {e}")
+
+    # ------------------ Settings Persistence ------------------
+    def _load_settings(self):
+        """Load persisted settings (theme, chosen directory) from settings.json if present."""
+        path = getattr(self, '_settings_path', None)
+        if path is None or not path.exists():
+            # No settings file => first run
+            self._first_run = True
+            return
+        try:
+            raw = path.read_text(encoding='utf-8').strip()
+            if not raw:
+                # Empty file => treat as first run defaults
+                self._first_run = True
+                return
+            data = json.loads(raw)
+        except Exception as e:
+            print(f"Warning: could not read settings.json: {e}")
+            self._first_run = True
+            return
+        # Theme
+        is_dark = data.get("is_dark_mode")
+        if isinstance(is_dark, bool):
+            self.is_dark_mode = is_dark
+        # Directory
+        chosen_dir = data.get("chosen_parent_dir")
+        if isinstance(chosen_dir, str):
+            p = Path(chosen_dir)
+            if p.exists() and p.is_dir():
+                self._chosen_parent_dir = p
+        # Recompute base dir after potential directory change
+        self._compta_base_dir = self._compute_compta_base_dir()
+        # Persist file if any normalization applied (e.g. path missing)
+        if not self._first_run:
+            try:
+                self._save_settings()
+            except Exception:
+                pass
+
+    def _save_settings(self):
+        """Persist current theme and chosen directory to settings.json."""
+        path = getattr(self, '_settings_path', None)
+        if path is None:
+            return
+        data = {
+            "is_dark_mode": self.is_dark_mode,
+            "chosen_parent_dir": str(self._chosen_parent_dir),
+        }
+        try:
+            path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+        except Exception as e:
+            print(f"Warning: could not save settings: {e}")
+
+    def _on_close(self):
+        """Handle window close event: save settings then destroy root."""
+        try:
+            self._save_settings()
+        except Exception:
+            pass
+        try:
+            self.root.destroy()
+        except Exception:
+            pass
 
     # ------------------ Statistics Helpers ------------------
     def _update_sheet_statistics(self, ws):
@@ -1432,28 +1719,6 @@ class App:
         except Exception:
             pass
 
-        self._sync_calendar_to_entry()
-        self._position_calendar()
-        self._build_calendar_header()
-        self._build_calendar_body()
-        self._refresh_calendar_theme()
-
-        # Set focus and grab on Windows
-        try:
-            self.calendar_win.focus_set()
-            self.calendar_win.grab_set()
-        except Exception:
-            pass
-
-        self.calendar_win.bind("<Escape>", lambda e: self._close_calendar())
-
-        # Additional Windows focus handling
-        self.calendar_win.bind("<FocusOut>", self._on_calendar_focus_out)
-
-    def _position_calendar(self):
-        if self.date_entry is None:
-            return
-
         # Force window updates to ensure accurate positioning
         self.root.update_idletasks()
         self.calendar_win.update_idletasks()
@@ -1625,62 +1890,70 @@ class App:
             self._calendar_month = today.month
             self._selected_date = None
 
+    # --- Calendar navigation & theming (restored) ---------------------------------
     def _prev_month(self):
-        if self._calendar_month == 1:
+        """Go to previous month in the calendar widget and rebuild UI."""
+        self._calendar_month -= 1
+        if self._calendar_month < 1:
             self._calendar_month = 12
             self._calendar_year -= 1
-        else:
-            self._calendar_month -= 1
-        self._build_calendar_header()
-        self._build_calendar_body()
-        self._refresh_calendar_theme()
+        if self.calendar_win and self.calendar_win.winfo_exists():
+            self._build_calendar_header()
+            self._build_calendar_body()
+            self._refresh_calendar_theme()
 
     def _next_month(self):
-        if self._calendar_month == 12:
+        """Go to next month in the calendar widget and rebuild UI."""
+        self._calendar_month += 1
+        if self._calendar_month > 12:
             self._calendar_month = 1
             self._calendar_year += 1
-        else:
-            self._calendar_month += 1
-        self._build_calendar_header()
-        self._build_calendar_body()
-        self._refresh_calendar_theme()
+        if self.calendar_win and self.calendar_win.winfo_exists():
+            self._build_calendar_header()
+            self._build_calendar_body()
+            self._refresh_calendar_theme()
 
     def _refresh_calendar_theme(self):
-        if self.calendar_win is None or not self.calendar_win.winfo_exists():
+        """Apply the current theme colors to the calendar popup (if open)."""
+        if not (self.calendar_win and self.calendar_win.winfo_exists()):
             return
         theme = self.current_theme
-        self.calendar_win.configure(bg=theme["bg"])
-
-        header_widgets = getattr(self, "_calendar_header_widgets", ())
-        if len(header_widgets) >= 4:
+        try:
+            self.calendar_win.configure(bg=theme["bg"])  # Window background
+        except Exception:
+            pass
+        # Header widgets: stored as (header_frame, prev_btn, next_btn, month_label)
+        header_widgets = getattr(self, "_calendar_header_widgets", None)
+        if header_widgets:
             header, prev_btn, next_btn, month_label = header_widgets
+            for w in (header,):
+                try:
+                    w.configure(bg=theme["bg"])
+                except Exception:
+                    pass
+            for btn in (prev_btn, next_btn):
+                try:
+                    btn.configure(
+                        bg=theme["entry_bg"],
+                        fg=theme["entry_fg"],
+                        activebackground=theme["toggle_track"],
+                        activeforeground=theme["toggle_thumb"]
+                    )
+                except Exception:
+                    pass
             try:
-                header.configure(bg=theme["bg"])
-                prev_btn.configure(
-                    bg=theme["entry_bg"],
-                    fg=theme["entry_fg"],
-                    activebackground=theme["toggle_track"],
-                    activeforeground=theme["toggle_thumb"]
-                )
-                next_btn.configure(
-                    bg=theme["entry_bg"],
-                    fg=theme["entry_fg"],
-                    activebackground=theme["toggle_track"],
-                    activeforeground=theme["toggle_thumb"]
-                )
                 month_label.configure(bg=theme["bg"], fg=theme["fg"])
             except Exception:
                 pass
-
+        # Day buttons inside self._calendar_day_frame
         day_frame = getattr(self, "_calendar_day_frame", None)
-        if day_frame is not None:
-            day_frame.configure(bg=theme["bg"])
+        if day_frame and day_frame.winfo_exists():
             for child in day_frame.winfo_children():
-                try:
-                    if isinstance(child, Label):
-                        child.configure(bg=theme["bg"], fg=theme["fg"])
-                    elif isinstance(child, Button):
-                        if getattr(child, "_is_selected", False):
+                # Skip the weekday header labels (they have no _is_selected attr)
+                if isinstance(child, Button):
+                    is_sel = getattr(child, "_is_selected", False)
+                    try:
+                        if is_sel:
                             child.configure(
                                 bg=theme["toggle_track_active"],
                                 fg=theme["toggle_thumb"],
@@ -1694,8 +1967,8 @@ class App:
                                 activebackground=theme["toggle_track"],
                                 activeforeground=theme["toggle_thumb"]
                             )
-                except Exception:
-                    pass
+                    except Exception:
+                        pass
 
     def _close_calendar(self):
         if self.calendar_win is not None:
