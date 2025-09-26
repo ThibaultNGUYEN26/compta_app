@@ -7,7 +7,7 @@ try:
     from openpyxl import Workbook, load_workbook
     from openpyxl.utils import get_column_letter
     from openpyxl.styles import PatternFill, Font
-    from openpyxl.chart import PieChart, BarChart, Reference
+    from openpyxl.chart import PieChart, BarChart, Reference, LineChart
     from openpyxl.chart.legend import Legend  # added legend import
     try:
         # Data labels for better readability (percentages inside slices)
@@ -811,10 +811,16 @@ class App:
                 cont.grid_columnconfigure(i, weight=0)
             cont.grid_columnconfigure(1, weight=1)
             self.compta_path_hint.configure(anchor='center')
-            self.compta_path_hint.grid(row=0, column=0, padx=(4,8), pady=0, sticky='w')
+            # Standard hint padding; overall vertical spacing handled on container
+            self.compta_path_hint.grid(row=0, column=0, padx=(4,8), pady=(0,0), sticky='w')
             self.compta_path_label.configure(wraplength=0, anchor='center', justify='center')
             self.compta_path_label.grid(row=0, column=1, padx=(0,12), sticky='ew')
             self.change_path_button.grid(row=0, column=2, padx=(0,6), sticky='e')
+            # Apply large spacing above the entire path container once (distance from add button)
+            try:
+                self.path_container.grid_configure(pady=(100,0))
+            except Exception:
+                pass
         else:
             # Stacked mode
             cont.grid_columnconfigure(0, weight=1)
@@ -825,6 +831,11 @@ class App:
             self.compta_path_label.configure(wraplength=480, anchor='center', justify='center')
             self.compta_path_label.grid(row=1, column=0, columnspan=2, sticky='ew')
             self.change_path_button.grid(row=1, column=2, padx=(12,4), sticky='e')
+            # Restore default smaller container spacing in stacked layout
+            try:
+                self.path_container.grid_configure(pady=(14,0))
+            except Exception:
+                pass
         # Force geometry update for smoother transitions
         try:
             cont.update_idletasks()
@@ -1218,6 +1229,9 @@ class App:
         # Per-category aggregation
         # Structure: cat_stats[category] = {"entrees_amount": float, "sorties_amount": float}
         cat_stats = {}
+        # Maintain insertion order of first appearance per type (scoped inside method)
+        outcome_order = []  # categories with non-zero sorties in first-seen order
+        income_order = []   # categories with non-zero entrees in first-seen order
 
         for r in range(2, ws.max_row + 1):
             type_cell = ws.cell(row=r, column=5).value
@@ -1229,10 +1243,18 @@ class App:
             except Exception:
                 amount = 0.0
 
+            # Normalize category for accent/case-insensitive savings detection
+            norm_cat = ""
+            if cat_cell:
+                norm_cat = str(cat_cell).strip().lower()
+                # Replace common accented e variants for robustness (é, è, ê)
+                norm_cat = norm_cat.replace('é', 'e').replace('è', 'e').replace('ê', 'e')
+            is_epargne = (norm_cat == 'epargne')
+
             if type_cell == "Entrée":
                 count_income += 1
                 total_entrees_amount += amount
-                if cat_cell == "Épargne":
+                if is_epargne:
                     # Money moved from current -> savings
                     current_account_balance -= amount
                     savings_balance += amount
@@ -1241,7 +1263,7 @@ class App:
             elif type_cell == "Sortie":
                 count_outcome += 1
                 total_sorties_amount += amount
-                if cat_cell == "Épargne":
+                if is_epargne:
                     # Money moved from savings -> current
                     current_account_balance += amount
                     savings_balance -= amount
@@ -1257,9 +1279,15 @@ class App:
                 if cat_cell not in cat_stats:
                     cat_stats[cat_cell] = {"entrees_amount": 0.0, "sorties_amount": 0.0}
                 if type_cell == "Entrée":
-                    cat_stats[cat_cell]["entrees_amount"] += amount
+                    prev = cat_stats[cat_cell]["entrees_amount"]
+                    cat_stats[cat_cell]["entrees_amount"] = prev + amount
+                    if prev == 0 and amount != 0 and cat_cell not in income_order:
+                        income_order.append(cat_cell)
                 elif type_cell == "Sortie":
-                    cat_stats[cat_cell]["sorties_amount"] += amount
+                    prev = cat_stats[cat_cell]["sorties_amount"]
+                    cat_stats[cat_cell]["sorties_amount"] = prev + amount
+                    if prev == 0 and amount != 0 and cat_cell not in outcome_order:
+                        outcome_order.append(cat_cell)
 
         # Build stats list (global first)
         stats = [
@@ -1318,21 +1346,26 @@ class App:
 
             # Row 1 title for outcome section
             ws.cell(row=1, column=11, value="Outcome")
-            # Rows 2-13 categories outcome values (skip zeros -> leave blank)
-            for i, cat in enumerate(CATEGORY_VALUES):
-                row_idx = 2 + i
+            # Rows 2-13 outcome categories in first-seen order
+            # Fill sequentially; stop if exceeding available rows
+            outcome_rows_start = 2
+            max_outcome_rows = 12  # rows 2..13 inclusive
+            # Clear area first
+            for i in range(max_outcome_rows):
+                ws.cell(row=outcome_rows_start + i, column=11, value=None)
+                ws.cell(row=outcome_rows_start + i, column=12, value=None)
+            for idx, cat in enumerate(outcome_order):
+                if idx >= max_outcome_rows:
+                    break
                 amt_sortie = cat_stats.get(cat, {}).get("sorties_amount", 0)
                 if amt_sortie not in (0, 0.0, None):
+                    row_idx = outcome_rows_start + idx
                     ws.cell(row=row_idx, column=11, value=cat)
                     vcell = ws.cell(row=row_idx, column=12, value=amt_sortie)
                     try:
                         vcell.number_format = "#,##0.00 [$€-fr-FR]"
                     except Exception:
                         pass
-                else:
-                    # Ensure cells remain empty if zero
-                    ws.cell(row=row_idx, column=11, value=None)
-                    ws.cell(row=row_idx, column=12, value=None)
 
             # Blank separator row 14 (leave empty)
             # Rows 15-23 left intentionally blank after refactor
@@ -1342,20 +1375,24 @@ class App:
                 income_title_cell.font = Font(bold=True, size=EXCEL_TITLE_FONT_SIZE)
             except Exception:
                 pass
-            # Rows 16-27 categories income values (skip zeros -> leave blank)
-            for i, cat in enumerate(CATEGORY_VALUES):
-                row_idx = 16 + i
+            # Rows 16-27 income categories in first-seen order
+            income_rows_start = 16
+            max_income_rows = 12  # 16..27 inclusive
+            for i in range(max_income_rows):
+                ws.cell(row=income_rows_start + i, column=11, value=None)
+                ws.cell(row=income_rows_start + i, column=12, value=None)
+            for idx, cat in enumerate(income_order):
+                if idx >= max_income_rows:
+                    break
                 amt_entree = cat_stats.get(cat, {}).get("entrees_amount", 0)
                 if amt_entree not in (0, 0.0, None):
+                    row_idx = income_rows_start + idx
                     ws.cell(row=row_idx, column=11, value=cat)
                     vcell = ws.cell(row=row_idx, column=12, value=amt_entree)
                     try:
                         vcell.number_format = "#,##0.00 [$€-fr-FR]"
                     except Exception:
                         pass
-                else:
-                    ws.cell(row=row_idx, column=11, value=None)
-                    ws.cell(row=row_idx, column=12, value=None)
 
             # -------- Outcome Chart (Sorties) --------
             labels_ref_out = Reference(ws, min_col=11, max_col=11, min_row=2, max_row=13)
@@ -1373,6 +1410,14 @@ class App:
                 pie_out.holeSize = 55
             except Exception:
                 pass
+            # Determine count of actually visible outcome categories (non-empty cells written)
+            visible_out_categories = [
+                ws.cell(row=outcome_rows_start + i, column=11).value
+                for i in range(max_outcome_rows)
+                if ws.cell(row=outcome_rows_start + i, column=11).value not in (None, "")
+            ]
+            num_out = len(visible_out_categories)
+
             if DataLabelList is not None:
                 try:
                     dll_o = DataLabelList()
@@ -1381,7 +1426,7 @@ class App:
                     dll_o.showVal = False
                     from openpyxl.chart.label import DataLabel
                     from openpyxl.drawing.text import RichText, Paragraph, ParagraphProperties, CharacterProperties
-                    for i in range(len(CATEGORY_VALUES)):
+                    for i in range(num_out):
                         dl = DataLabel(idx=i)
                         dl.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1400)))])
                         dll_o.dLbl.append(dl)
@@ -1504,6 +1549,109 @@ class App:
             except Exception as e:
                 print(f"Warning: could not create income/outcome bar chart: {e}")
 
+                # Continue even if bar chart fails
+
+            # -------- Line Chart: Daily Income / Outcome --------
+            try:
+                DATE_COL = 30  # AD
+                INC_COL = 31   # AE
+                OUT_COL = 32   # AF
+                # Clear previous area (limited rows for safety)
+                for r in range(1, min(ws.max_row + 2, 400)):
+                    for c in (DATE_COL, INC_COL, OUT_COL):
+                        ws.cell(row=r, column=c).value = None
+                from collections import defaultdict
+                from datetime import datetime as _dt
+                daily = defaultdict(lambda: {"inc": 0.0, "out": 0.0})
+                for r in range(2, ws.max_row + 1):
+                    raw_date = ws.cell(row=r, column=1).value
+                    t = ws.cell(row=r, column=5).value
+                    mval = ws.cell(row=r, column=3).value
+                    try:
+                        amount = float(str(mval).replace(',', '.')) if mval not in (None, "") else 0.0
+                    except Exception:
+                        amount = 0.0
+                    if amount == 0:
+                        continue
+                    d = raw_date
+                    if isinstance(d, str):
+                        for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d"):
+                            try:
+                                d = _dt.strptime(d, fmt).date()
+                                break
+                            except Exception:
+                                continue
+                    if d is None:
+                        continue
+                    if t == "Entrée":
+                        daily[d]["inc"] += amount
+                    elif t == "Sortie":
+                        daily[d]["out"] += amount
+                if daily:
+                    ordered = sorted(daily.items(), key=lambda x: x[0])
+                    ws.cell(row=1, column=DATE_COL, value="Date")
+                    ws.cell(row=1, column=INC_COL, value="Income")
+                    ws.cell(row=1, column=OUT_COL, value="Outcome")
+                    last_row = 1
+                    for idx, (d, vals) in enumerate(ordered, start=2):
+                        ws.cell(row=idx, column=DATE_COL, value=d)
+                        if hasattr(d, 'strftime'):
+                            try:
+                                ws.cell(row=idx, column=DATE_COL).number_format = "dd/mm/yyyy"
+                            except Exception:
+                                pass
+                        ic = ws.cell(row=idx, column=INC_COL, value=vals['inc'])
+                        oc = ws.cell(row=idx, column=OUT_COL, value=vals['out'])
+                        try:
+                            ic.number_format = "#,##0.00 [$€-fr-FR]"
+                            oc.number_format = "#,##0.00 [$€-fr-FR]"
+                        except Exception:
+                            pass
+                        last_row = idx
+                    data_ref = Reference(ws, min_col=INC_COL, max_col=OUT_COL, min_row=1, max_row=last_row)
+                    cats_ref = Reference(ws, min_col=DATE_COL, max_col=DATE_COL, min_row=2, max_row=last_row)
+                    line_chart = LineChart()
+                    line_chart.add_data(data_ref, titles_from_data=True)
+                    line_chart.set_categories(cats_ref)
+                    line_chart.title = None
+                    line_chart.y_axis.title = None
+                    line_chart.x_axis.title = None
+                    line_chart.x_axis.number_format = 'dd/mm/yyyy'
+                    # Style series
+                    try:
+                        colors = ["2E7D32", "C62828"]
+                        for i, ser in enumerate(line_chart.series):
+                            gp = getattr(ser, 'graphicalProperties', None)
+                            if gp is not None:
+                                try:
+                                    gp.line.solidFill = colors[i % len(colors)]
+                                    gp.line.width = 20000
+                                except Exception:
+                                    pass
+                            try:
+                                ser.marker.symbol = 'circle'
+                                ser.marker.size = 6
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                    # Remove any previous daily/cumulative line chart
+                    try:
+                        to_remove = []
+                        for obj in ws._charts:
+                            if hasattr(obj, 'series') and len(getattr(obj, 'series', [])) in (2, 3):
+                                if getattr(obj, 'title', None) in (None, ''):
+                                    to_remove.append(obj)
+                        for obj in to_remove:
+                            ws._charts.remove(obj)
+                    except Exception:
+                        pass
+                    line_chart.width = CHART_WIDTH * 0.9
+                    line_chart.height = CHART_HEIGHT * 0.75
+                    ws.add_chart(line_chart, "AC18")
+            except Exception as e:
+                print(f"Warning: could not create daily income/outcome line chart: {e}")
+
             # -------- Income Chart (Entrées) --------
             labels_ref_in = Reference(ws, min_col=11, max_col=11, min_row=16, max_row=27)
             values_ref_in = Reference(ws, min_col=12, max_col=12, min_row=16, max_row=27)
@@ -1520,6 +1668,14 @@ class App:
                 pie_in.holeSize = 55
             except Exception:
                 pass
+            # Determine count of actually visible income categories (non-empty cells written)
+            visible_in_categories = [
+                ws.cell(row=income_rows_start + i, column=11).value
+                for i in range(max_income_rows)
+                if ws.cell(row=income_rows_start + i, column=11).value not in (None, "")
+            ]
+            num_in = len(visible_in_categories)
+
             if DataLabelList is not None:
                 try:
                     dll_i = DataLabelList()
@@ -1528,7 +1684,7 @@ class App:
                     dll_i.showVal = False
                     from openpyxl.chart.label import DataLabel
                     from openpyxl.drawing.text import RichText, Paragraph, ParagraphProperties, CharacterProperties
-                    for i in range(len(CATEGORY_VALUES)):
+                    for i in range(num_in):
                         dl = DataLabel(idx=i)
                         dl.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1400)))])
                         dll_i.dLbl.append(dl)
@@ -1542,7 +1698,7 @@ class App:
                 if pie_in.series:
                     ser_i = pie_in.series[0]
                     from openpyxl.chart.series import DataPoint
-                    for i in range(len(CATEGORY_VALUES)):
+                    for i in range(num_in):
                         try:
                             pt = ser_i.dPt[i]
                         except IndexError:
