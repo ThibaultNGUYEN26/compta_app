@@ -24,6 +24,7 @@ from tkinter import (
     Entry,
     Frame,
     Label,
+    Listbox,
     messagebox,
     PhotoImage,
     StringVar,
@@ -157,6 +158,23 @@ class App:
             image=self.dark_mode_icon,
         )
         self.toggle_button.pack(side="right", padx=12, pady=8)
+
+        # Accounts manager button (top-left)
+        self.accounts_button = Button(
+            self.header_frame,
+            text="Comptes...",
+            command=self._open_accounts_manager,
+            highlightthickness=0,
+            borderwidth=0,
+            relief="flat",
+            bg=LIGHT_THEME["bg"],
+            fg=LIGHT_THEME["fg"],
+            activebackground=LIGHT_THEME["bg"],
+            activeforeground=LIGHT_THEME["fg"],
+            font=(FONT_FAMILY, 11),
+            cursor="hand2"
+        )
+        self.accounts_button.pack(side="left", padx=12, pady=6)
 
         self.body = Frame(self.root, bg=LIGHT_THEME["bg"])
         self.body.pack(expand=True, fill="both", padx=40, pady=10)
@@ -339,12 +357,22 @@ class App:
         # Settings file path & first-run flag
         self._settings_path = Path(__file__).resolve().parent / "settings.json"
         self._first_run = False
+        # Accounts (lists)
+        self.current_accounts = []  # list[str]
+        self.savings_accounts = []  # list[str]
         # Load persisted settings BEFORE computing base dir / building path UI
         try:
             self._load_settings()
         except Exception:
             # On any load failure, treat as first run with defaults
             self._first_run = True
+        # Remove legacy default 'Épargne Principale' if present so savings list starts empty
+        if any(acc.strip().lower() == "épargne principale".lower() for acc in self.savings_accounts):
+            self.savings_accounts = [acc for acc in self.savings_accounts if acc.strip().lower() != "épargne principale".lower()]
+            try:
+                self._save_settings()
+            except Exception:
+                pass
         # Compute effective base directory AFTER potential settings load modifications
         self._compta_base_dir = self._compute_compta_base_dir()
 
@@ -1165,6 +1193,18 @@ class App:
             p = Path(chosen_dir)
             if p.exists() and p.is_dir():
                 self._chosen_parent_dir = p
+        # Accounts lists
+        cur_list = data.get("current_accounts")
+        if isinstance(cur_list, list):
+            self.current_accounts = [str(x) for x in cur_list if isinstance(x, (str, int, float))]
+        sav_list = data.get("savings_accounts")
+        if isinstance(sav_list, list):
+            self.savings_accounts = [str(x) for x in sav_list if isinstance(x, (str, int, float))]
+            # Remove legacy default 'Épargne Principale' if it exists
+            self.savings_accounts = [acc for acc in self.savings_accounts if acc.strip().lower() != "épargne principale".lower()]
+        # Provide sensible defaults if empty
+        if not self.current_accounts:
+            self.current_accounts = ["Courant Principal"]
         # Recompute base dir after potential directory change
         self._compta_base_dir = self._compute_compta_base_dir()
         # Persist file if any normalization applied (e.g. path missing)
@@ -1182,6 +1222,8 @@ class App:
         data = {
             "is_dark_mode": self.is_dark_mode,
             "chosen_parent_dir": str(self._chosen_parent_dir),
+            "current_accounts": [acc for acc in self.current_accounts if str(acc).strip()],
+            "savings_accounts": [acc for acc in self.savings_accounts if str(acc).strip() and str(acc).strip().lower() != "épargne principale".lower()],
         }
         try:
             path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
@@ -2104,6 +2146,12 @@ class App:
         if self.calendar_win and self.calendar_win.winfo_exists():
             self._build_calendar_body()
             self._refresh_calendar_theme()
+            # Recolor accounts button
+            if hasattr(self, 'accounts_button'):
+                try:
+                    self.accounts_button.configure(bg=self.current_theme["bg"], fg=self.current_theme["fg"], activebackground=self.current_theme["bg"], activeforeground=self.current_theme["fg"])
+                except Exception:
+                    pass
         self._close_calendar()
 
     def _sync_calendar_to_entry(self):
@@ -2198,6 +2246,97 @@ class App:
                             )
                     except Exception:
                         pass
+
+    # ------------------ Accounts Management (class-level methods) ------------------
+    def _open_accounts_manager(self):
+        if hasattr(self, '_accounts_win') and self._accounts_win and self._accounts_win.winfo_exists():
+            try:
+                self._accounts_win.lift()
+                return
+            except Exception:
+                pass
+        win = Toplevel(self.root)
+        self._accounts_win = win
+        win.title("Gestion des Comptes")
+        try:
+            win.configure(bg=self.current_theme["bg"])
+        except Exception:
+            pass
+        win.geometry("420x340")
+        frm_cur = Frame(win, bg=self.current_theme["bg"])
+        frm_sav = Frame(win, bg=self.current_theme["bg"])
+        frm_buttons = Frame(win, bg=self.current_theme["bg"])
+        frm_cur.pack(fill="both", expand=True, padx=12, pady=(12,6))
+        frm_sav.pack(fill="both", expand=True, padx=12, pady=(0,6))
+        frm_buttons.pack(fill="x", padx=12, pady=8)
+        lbl_cur = Label(frm_cur, text="Comptes Courants", bg=self.current_theme["bg"], fg=self.current_theme["fg"], font=(FONT_FAMILY, 12, 'bold'))
+        lbl_cur.pack(anchor="w")
+        self._cur_listbox = Listbox(frm_cur, height=5, activestyle="none")
+        self._cur_listbox.pack(fill="x", pady=4)
+        for name in self.current_accounts:
+            self._cur_listbox.insert('end', name)
+        cur_add_frame = Frame(frm_cur, bg=self.current_theme["bg"])
+        cur_add_frame.pack(fill="x", pady=(2,4))
+        self._cur_new_var = StringVar()
+        cur_entry = Entry(cur_add_frame, textvariable=self._cur_new_var, width=24)
+        cur_entry.pack(side="left", padx=(0,6))
+        cur_btn = Button(cur_add_frame, text="Ajouter", command=self._add_current_account, relief="flat", bg=self.current_theme["toggle_track_active"], fg=self.current_theme["toggle_thumb"], cursor="hand2")
+        cur_btn.pack(side="left")
+        lbl_sav = Label(frm_sav, text="Comptes Épargne", bg=self.current_theme["bg"], fg=self.current_theme["fg"], font=(FONT_FAMILY, 12, 'bold'))
+        lbl_sav.pack(anchor="w")
+        self._sav_listbox = Listbox(frm_sav, height=5, activestyle="none")
+        self._sav_listbox.pack(fill="x", pady=4)
+        for name in self.savings_accounts:
+            self._sav_listbox.insert('end', name)
+        sav_add_frame = Frame(frm_sav, bg=self.current_theme["bg"])
+        sav_add_frame.pack(fill="x", pady=(2,4))
+        self._sav_new_var = StringVar()
+        sav_entry = Entry(sav_add_frame, textvariable=self._sav_new_var, width=24)
+        sav_entry.pack(side="left", padx=(0,6))
+        sav_btn = Button(sav_add_frame, text="Ajouter", command=self._add_savings_account, relief="flat", bg=self.current_theme["toggle_track_active"], fg=self.current_theme["toggle_thumb"], cursor="hand2")
+        sav_btn.pack(side="left")
+        close_btn = Button(frm_buttons, text="Fermer", command=win.destroy, relief="flat", bg=self.current_theme["entry_bg"], fg=self.current_theme["entry_fg"], cursor="hand2")
+        close_btn.pack(side="right")
+
+    def _add_current_account(self):
+        name = (getattr(self, '_cur_new_var', StringVar()).get() or "").strip()
+        if not name:
+            return
+        if name in self.current_accounts:
+            return
+        self.current_accounts.append(name)
+        try:
+            self._cur_listbox.insert('end', name)
+        except Exception:
+            pass
+        try:
+            self._cur_new_var.set("")
+        except Exception:
+            pass
+        try:
+            self._save_settings()
+        except Exception:
+            pass
+
+    def _add_savings_account(self):
+        name = (getattr(self, '_sav_new_var', StringVar()).get() or "").strip()
+        if not name:
+            return
+        if name in self.savings_accounts:
+            return
+        self.savings_accounts.append(name)
+        try:
+            self._sav_listbox.insert('end', name)
+        except Exception:
+            pass
+        try:
+            self._sav_new_var.set("")
+        except Exception:
+            pass
+        try:
+            self._save_settings()
+        except Exception:
+            pass
 
     def _close_calendar(self):
         if self.calendar_win is not None:
