@@ -375,6 +375,8 @@ class App:
                 pass
         # Compute effective base directory AFTER potential settings load modifications
         self._compta_base_dir = self._compute_compta_base_dir()
+        # Store full path text for dynamic ellipsis rendering
+        self._compta_path_full_text = str(self._compta_base_dir)
 
         self.path_container = Frame(self.entry_frame, bg=LIGHT_THEME["bg"])
         self.path_container.grid(row=4, column=0, columnspan=4, sticky="ew", pady=(14, 0))
@@ -394,13 +396,13 @@ class App:
 
         self.compta_path_label = Label(
             self.path_container,
-            text=self._format_compta_path_for_label(self._compta_base_dir),
+            text=self._compta_path_full_text,
             anchor="center",
             justify="center",
             bg=LIGHT_THEME["bg"],
             fg=LIGHT_THEME["fg"],
             font=self.label_font,
-            wraplength=480,
+            wraplength=0,
             padx=6,
         )
         self.compta_path_label.bind("<Configure>", lambda e: self._update_path_layout())
@@ -841,6 +843,7 @@ class App:
             self.compta_path_hint.configure(anchor='center')
             # Standard hint padding; overall vertical spacing handled on container
             self.compta_path_hint.grid(row=0, column=0, padx=(4,8), pady=(0,0), sticky='w')
+            # Prevent wrapping; we'll show ellipsis when too narrow
             self.compta_path_label.configure(wraplength=0, anchor='center', justify='center')
             self.compta_path_label.grid(row=0, column=1, padx=(0,12), sticky='ew')
             self.change_path_button.grid(row=0, column=2, padx=(0,6), sticky='e')
@@ -856,7 +859,8 @@ class App:
             cont.grid_columnconfigure(2, weight=0)
             self.compta_path_hint.configure(anchor='center')
             self.compta_path_hint.grid(row=0, column=0, columnspan=3, pady=(0,6))
-            self.compta_path_label.configure(wraplength=480, anchor='center', justify='center')
+            # Prevent wrapping; we'll show ellipsis when too narrow
+            self.compta_path_label.configure(wraplength=0, anchor='center', justify='center')
             self.compta_path_label.grid(row=1, column=0, columnspan=2, sticky='ew')
             self.change_path_button.grid(row=1, column=2, padx=(12,4), sticky='e')
             # Restore default smaller container spacing in stacked layout
@@ -869,6 +873,63 @@ class App:
             cont.update_idletasks()
         except Exception:
             pass
+        # After layout is updated, ensure the path text is elided to fit
+        try:
+            self._refresh_compta_path_elision()
+        except Exception:
+            pass
+
+    def _elide_text_to_width(self, text: str, max_width_px: int) -> str:
+        """Return text truncated with '...' so that it fits within max_width_px using label font.
+
+        Ellipsis is added at the end (right truncation). If even '...' doesn't fit, returns '...'.
+        """
+        try:
+            fnt = self.label_font
+            if fnt.measure(text) <= max_width_px:
+                return text
+            ell = '...'
+            if fnt.measure(ell) > max_width_px:
+                return '...'
+            lo, hi = 0, len(text)
+            # Binary search for max prefix length that fits with ellipsis
+            while lo < hi:
+                mid = (lo + hi) // 2
+                candidate = text[:mid] + ell
+                if fnt.measure(candidate) <= max_width_px:
+                    lo = mid + 1
+                else:
+                    hi = mid
+            cut = max(0, hi - 1)
+            return (text[:cut] + ell) if cut > 0 else '...'
+        except Exception:
+            # Fallback to simple char-based truncation
+            if len(text) <= 70:
+                return text
+            return text[:67] + '...'
+
+    def _refresh_compta_path_elision(self):
+        """Update the displayed path with an ellipsis based on the label's current width."""
+        if not hasattr(self, 'compta_path_label'):
+            return
+        full_text = getattr(self, '_compta_path_full_text', str(self._compta_base_dir))
+        lbl = self.compta_path_label
+        try:
+            lbl.update_idletasks()
+        except Exception:
+            pass
+        width = lbl.winfo_width()
+        if width <= 1:
+            # Try again shortly when geometry is known
+            self.root.after(50, self._refresh_compta_path_elision)
+            return
+        # Account for internal horizontal padding a bit
+        pad = 8
+        max_px = max(0, width - pad)
+        new_text = self._elide_text_to_width(full_text, max_px)
+        # Avoid unnecessary updates
+        if lbl.cget('text') != new_text:
+            lbl.configure(text=new_text)
 
     def _add_row(self):
         """Handle adding a new row with the current form data"""
@@ -952,7 +1013,12 @@ class App:
                 print(f"Création du dossier compta: {base_dir}")
                 # Refresh label to remove the 'sera créé' hint if present
                 if hasattr(self, 'compta_path_label'):
-                    self.compta_path_label.configure(text=self._format_compta_path_for_label(base_dir))
+                    self._compta_path_full_text = str(base_dir)
+                    self.compta_path_label.configure(text=self._compta_path_full_text)
+                    try:
+                        self._refresh_compta_path_elision()
+                    except Exception:
+                        pass
             except Exception as e:
                 print(f"Warning: could not create directory {base_dir}: {e}")
         # Create file path inside the subdirectory
@@ -1146,8 +1212,12 @@ class App:
             self._compta_base_dir = self._compute_compta_base_dir()
             # Update label to reflect future path (not yet created if missing)
             if hasattr(self, 'compta_path_label'):
-                label_text = self._format_compta_path_for_label(self._compta_base_dir)
-                self.compta_path_label.configure(text=label_text)
+                self._compta_path_full_text = str(self._compta_base_dir)
+                self.compta_path_label.configure(text=self._compta_path_full_text)
+                try:
+                    self._refresh_compta_path_elision()
+                except Exception:
+                    pass
             # Persist updated setting immediately
             try:
                 self._save_settings()
@@ -2391,7 +2461,6 @@ class App:
             pass
 
         self._close_calendar()
-
 
 if __name__ == "__main__":
     root = Tk()
