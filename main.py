@@ -445,6 +445,21 @@ class App:
         self.body.configure(bg=theme["bg"])
         self.entry_frame.configure(bg=theme["bg"])
 
+        # Ensure path section respects theme
+        if hasattr(self, "path_container") and self.path_container is not None:
+            self.path_container.configure(bg=theme["bg"])
+        if hasattr(self, "compta_path_hint") and self.compta_path_hint is not None:
+            self.compta_path_hint.configure(bg=theme["bg"], fg=theme["fg"])
+        if hasattr(self, "compta_path_label") and self.compta_path_label is not None:
+            self.compta_path_label.configure(bg=theme["bg"], fg=theme["fg"])
+        if hasattr(self, "change_path_button") and self.change_path_button is not None:
+            self.change_path_button.configure(
+                bg=theme["entry_bg"],
+                fg=theme["entry_fg"],
+                activebackground=theme["toggle_track"],
+                activeforeground=theme["toggle_thumb"],
+            )
+
         self.toggle_button.configure(
             image=self.light_mode_icon if self.is_dark_mode else self.dark_mode_icon,
             bg=theme["bg"],
@@ -516,7 +531,7 @@ class App:
                 print("Invalid date format. Please use DD-MM-YYYY format.")
             except Exception as e:
                 print(f"Error adding row: {e}")
-        
+
 
         if self.transaction_container is not None:
             self.transaction_container.configure(bg=theme["bg"])
