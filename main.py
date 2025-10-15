@@ -159,22 +159,7 @@ class App:
         )
         self.toggle_button.pack(side="right", padx=12, pady=8)
 
-        # Accounts manager button (top-left)
-        self.accounts_button = Button(
-            self.header_frame,
-            text="Comptes...",
-            command=self._open_accounts_manager,
-            highlightthickness=0,
-            borderwidth=0,
-            relief="flat",
-            bg=LIGHT_THEME["bg"],
-            fg=LIGHT_THEME["fg"],
-            activebackground=LIGHT_THEME["bg"],
-            activeforeground=LIGHT_THEME["fg"],
-            font=(FONT_FAMILY, 11),
-            cursor="hand2"
-        )
-        self.accounts_button.pack(side="left", padx=12, pady=6)
+        # (Removed 'Comptes...' button per user request)
 
         self.body = Frame(self.root, bg=LIGHT_THEME["bg"])
         self.body.pack(expand=True, fill="both", padx=40, pady=10)
@@ -360,11 +345,14 @@ class App:
         # Accounts (lists)
         self.current_accounts = []  # list[str]
         self.savings_accounts = []  # list[str]
+        self.selected_current_account = None  # str | None
+        self.selected_savings_account = None  # str | None (for Épargne transfers)
+        self._current_account_var = StringVar()
+        self._savings_account_var = StringVar()
         # Load persisted settings BEFORE computing base dir / building path UI
         try:
             self._load_settings()
         except Exception:
-            # On any load failure, treat as first run with defaults
             self._first_run = True
         # Remove legacy default 'Épargne Principale' if present so savings list starts empty
         if any(acc.strip().lower() == "épargne principale".lower() for acc in self.savings_accounts):
@@ -432,6 +420,7 @@ class App:
         self.path_container.grid_columnconfigure(1, weight=0)
         self.path_container.grid_columnconfigure(2, weight=0)
 
+        # Final initialization steps
         self.apply_theme()
         self._update_fonts()
         self._clear_category_selection()
@@ -439,9 +428,10 @@ class App:
         self._render_prelevement_toggle(LIGHT_THEME)
         self._initialize_libelle_placeholder()
         self._initialize_montant_placeholder()
+        # Inject account selectors after initial theme & fonts
+        self._inject_account_selectors()
 
         self.root.bind("<Configure>", self._on_resize)
-
         # Bind click events to close calendar when clicking inside the app window
         self.root.bind("<Button-1>", self._maybe_close_calendar, add="+")
 
@@ -466,31 +456,11 @@ class App:
 
         for entry in self.entries:
             if entry == getattr(self, 'libelle_entry', None):
-                # Special handling for libellé entry to preserve placeholder styling
-                entry.configure(
-                    bg=theme["entry_bg"],
-                    insertbackground=theme["entry_fg"],
-                    highlightbackground=theme["entry_border"],
-                    highlightcolor=theme["entry_border"],
-                )
-                # Don't set fg here - let _update_libelle_appearance handle it
+                entry.configure(bg=theme["entry_bg"], insertbackground=theme["entry_fg"], highlightbackground=theme["entry_border"], highlightcolor=theme["entry_border"])
             elif entry == getattr(self, 'montant_entry', None):
-                # Special handling for montant entry to preserve placeholder styling
-                entry.configure(
-                    bg=theme["entry_bg"],
-                    insertbackground=theme["entry_fg"],
-                    highlightbackground=theme["entry_border"],
-                    highlightcolor=theme["entry_border"],
-                )
-                # Don't set fg here - let _update_montant_appearance handle it
+                entry.configure(bg=theme["entry_bg"], insertbackground=theme["entry_fg"], highlightbackground=theme["entry_border"], highlightcolor=theme["entry_border"])
             else:
-                entry.configure(
-                    bg=theme["entry_bg"],
-                    fg=theme["entry_fg"],
-                    insertbackground=theme["entry_fg"],
-                    highlightbackground=theme["entry_border"],
-                    highlightcolor=theme["entry_border"],
-                )
+                entry.configure(bg=theme["entry_bg"], fg=theme["entry_fg"], highlightbackground=theme["entry_border"], highlightcolor=theme["entry_border"])
 
         # Update appearance after theme change
         if hasattr(self, 'libelle_entry'):
@@ -499,81 +469,54 @@ class App:
             self._update_montant_appearance()
 
         # Apply theme to add button
-        if hasattr(self, 'add_button'):
-            self.add_button.configure(
-                bg=theme["toggle_track_active"],
-                fg=theme["toggle_thumb"],
-                activebackground=theme["toggle_track"],
-                activeforeground=theme["toggle_thumb"]
-            )
-        if hasattr(self, 'change_path_button'):
-            self.change_path_button.configure(
-                bg=theme["entry_bg"],
-                fg=theme["entry_fg"],
-                activebackground=theme["toggle_track"],
-                activeforeground=theme["toggle_thumb"]
-            )
-        # Path container & labels
-        if hasattr(self, 'path_container') and self.path_container:
+        def _add_row(self):
+            """Handle adding a new row with the current form data"""
+            if not EXCEL_AVAILABLE:
+                print("Excel functionality not available. Please install openpyxl: pip install openpyxl")
+                return
+            date_value = self.date_var.get().strip()
+            libelle_value = self.libelle_var.get().strip()
+            montant_value = self.montant_var.get().strip()
+            category_value = self.category_var.get().strip()
+            transaction_type = "Entrée" if self.transaction_is_entry else "Sortie"
+            prelevement_status = "Oui" if self.is_prelevement else "Non"
+            current_account = self.selected_current_account or (self.current_accounts[0] if self.current_accounts else "Compte Principal")
+            savings_account = None
+            if category_value == "Épargne":
+                savings_account = self._savings_account_var.get().strip() or None
+                if not savings_account and self.savings_accounts:
+                    print("Veuillez sélectionner un compte Épargne.")
+                    return
+            # Validation
+            if not date_value:
+                print("Date is required"); return
+            if not libelle_value or libelle_value == self.libelle_placeholder:
+                print("Libellé is required"); return
+            if not montant_value or montant_value == self.montant_placeholder:
+                print("Montant is required"); return
+            if not category_value:
+                print("Catégorie is required"); return
             try:
-                self.path_container.configure(bg=theme["bg"])
-            except Exception:
-                pass
-        if hasattr(self, 'compta_path_hint') and self.compta_path_hint:
-            try:
-                self.compta_path_hint.configure(bg=theme["bg"], fg=theme["fg"])
-            except Exception:
-                pass
-        if hasattr(self, 'compta_path_label') and self.compta_path_label:
-            try:
-                self.compta_path_label.configure(bg=theme["bg"], fg=theme["fg"])
-            except Exception:
-                pass
-        # Re-run layout to ensure correct geometry with potential font/color adjustments
-        try:
-            self._update_path_layout()
-        except Exception:
-            pass
-
-        if self.category_combobox is not None:
-            self.style.configure(
-                self.combobox_style,
-                foreground=theme["entry_fg"],
-                fieldbackground=theme["entry_bg"],
-                background=theme["entry_bg"],
-                selectforeground=theme["entry_fg"],
-                selectbackground=theme["entry_bg"],
-                arrowcolor=theme["entry_fg"],
-                borderwidth=0,
-                focuscolor="none",
-                relief="flat",
-                highlightthickness=0,
-                insertwidth=0,
-                padding=(6, 5, 6, 5),  # Reduced vertical padding
-            )
-            self.style.map(
-                self.combobox_style,
-                fieldbackground=[("readonly", theme["entry_bg"]), ("focus", theme["entry_bg"]), ("active", theme["entry_bg"])],
-                foreground=[("readonly", theme["entry_fg"]), ("focus", theme["entry_fg"]), ("active", theme["entry_fg"])],
-                background=[("readonly", theme["entry_bg"]), ("focus", theme["entry_bg"]), ("active", theme["entry_bg"])],
-                relief=[("readonly", "flat"), ("focus", "flat"), ("active", "flat")],
-                borderwidth=[("readonly", 0), ("focus", 0), ("active", 0)],
-                highlightthickness=[("readonly", 0), ("focus", 0), ("active", 0)],
-            )
-            self.category_combobox.configure(style=self.combobox_style)
-
-            # Configure dropdown list font and colors
-            try:
-                self.style.configure("App.TCombobox.Listbox",
-                                   font=self.entry_font,
-                                   background=theme["entry_bg"],
-                                   foreground=theme["entry_fg"],
-                                   selectbackground=theme["toggle_track_active"],
-                                   selectforeground=theme["toggle_thumb"])
-            except Exception:
-                pass
-
-            self._clear_category_selection()
+                parsed_date = datetime.strptime(date_value, "%d-%m-%Y")
+                year = parsed_date.year
+                month = parsed_date.month
+                self._write_to_excel(date_value, libelle_value, montant_value, category_value, transaction_type, prelevement_status, year, month, current_account, savings_account)
+                print(f"Successfully added: Date={date_value}, Libellé={libelle_value}, Montant={montant_value}, Catégorie={category_value}, Type={transaction_type}, Prélèvement={prelevement_status}")
+                self.libelle_var.set(self.libelle_placeholder); self.libelle_has_placeholder = True; self._update_libelle_appearance()
+                self.montant_var.set(self.montant_placeholder); self.montant_has_placeholder = True; self._update_montant_appearance()
+                self.category_var.set("")
+                try:
+                    self.libelle_entry.focus_set(); self.libelle_entry.icursor('end')
+                except Exception:
+                    pass
+                self._clear_category_selection()
+                self.transaction_is_entry = False; self.is_prelevement = False; self._savings_account_var.set("")
+                self._render_transaction_toggle(self.current_theme); self._render_prelevement_toggle(self.current_theme)
+            except ValueError:
+                print("Invalid date format. Please use DD-MM-YYYY format.")
+            except Exception as e:
+                print(f"Error adding row: {e}")
+        
 
         if self.transaction_container is not None:
             self.transaction_container.configure(bg=theme["bg"])
@@ -1045,12 +988,15 @@ class App:
                     ws = wb[sheet_name]
                 else:
                     ws = wb.create_sheet(sheet_name)
-                    # Add headers
-                    headers = ["Date", "Libellé", "Montant", "Catégorie", "Type", "Prélèvement"]
+                    # Add headers (include Compte column G)
+                    headers = ["Date", "Libellé", "Montant", "Catégorie", "Type", "Prélèvement", "Compte"]
                     for col, header in enumerate(headers, 1):
                         ws.cell(row=1, column=col, value=header)
 
-                # Find the next empty row considering only transaction data columns (A-F)
+                # Ensure Compte header present if sheet pre-existed
+                if ws.cell(row=1, column=7).value is None:
+                    ws.cell(row=1, column=7, value="Compte")
+                # Find the next empty row considering only transaction data columns (A-G now)
                 next_row = self._find_next_transaction_row(ws)
 
                 # Add the data
@@ -1091,22 +1037,40 @@ class App:
                     font_color = Font(color="C62828")
 
                 # Apply formatting to all cells in the row
-                for col in range(1, 7):  # Columns 1-6 (Date, Libellé, Montant, Catégorie, Type, Prélèvement)
+                for col in range(1, 8):  # Columns 1-7 (include Compte)
                     cell = ws.cell(row=next_row, column=col)
                     cell.fill = fill
                     cell.font = font_color
 
+                # Write Compte column
+                try:
+                    current_account = getattr(self, 'selected_current_account', None) or (self.current_accounts[0] if self.current_accounts else "Compte Principal")
+                except Exception:
+                    current_account = "Compte Principal"
+                compte_value = current_account
+                if category_value == "Épargne":
+                    # Determine direction based on type
+                    savings_account = getattr(self, '_savings_account_var', StringVar()).get().strip()
+                    if savings_account:
+                        if transaction_type == "Entrée":
+                            # Money moving from current to savings
+                            compte_value = f"{current_account} -> {savings_account}"
+                        else:
+                            compte_value = f"{savings_account} -> {current_account}"
+                ws.cell(row=next_row, column=7, value=compte_value)
+
+                # Normalize montant column formats
                 try:
                     for r in range(2, ws.max_row + 1):
-                        c = ws.cell(row=r, column=3)
-                        v = c.value
-                        if isinstance(v, str):
+                        c_amt = ws.cell(row=r, column=3)
+                        v_amt = c_amt.value
+                        if isinstance(v_amt, str):
                             try:
-                                c.value = float(v.replace(",", "."))
+                                c_amt.value = float(v_amt.replace(",", "."))
                             except Exception:
                                 pass
-                        if isinstance(c.value, (int, float)):
-                            c.number_format = "#,##0.00 [$€-fr-FR]"
+                        if isinstance(c_amt.value, (int, float)):
+                            c_amt.number_format = "#,##0.00 [$€-fr-FR]"
                 except Exception:
                     pass
 
@@ -1274,7 +1238,7 @@ class App:
             self.savings_accounts = [acc for acc in self.savings_accounts if acc.strip().lower() != "épargne principale".lower()]
         # Provide sensible defaults if empty
         if not self.current_accounts:
-            self.current_accounts = ["Courant Principal"]
+            self.current_accounts = ["Compte Courant"]
         # Recompute base dir after potential directory change
         self._compta_base_dir = self._compute_compta_base_dir()
         # Persist file if any normalization applied (e.g. path missing)
@@ -2090,6 +2054,35 @@ class App:
             y = self.date_entry.winfo_rooty() - cal_height
 
         self.calendar_win.geometry(f"{cal_width}x{cal_height}+{x}+{y}")
+        # Populate the calendar (header + body) – previously missing, causing empty popup
+        try:
+            # Sync displayed month/year to current entry value if parsable
+            try:
+                self._sync_calendar_to_entry()
+            except Exception:
+                pass
+            # (Re)build header and body every open to reflect any changes
+            try:
+                self._build_calendar_header()
+            except Exception:
+                pass
+            try:
+                self._build_calendar_body()
+            except Exception:
+                pass
+            # Apply theme to freshly created widgets
+            try:
+                self._refresh_calendar_theme()
+            except Exception:
+                pass
+            # Ensure focus-out listener is attached so clicking elsewhere closes popup
+            try:
+                self.calendar_win.bind("<FocusOut>", self._on_calendar_focus_out)
+            except Exception:
+                pass
+        except Exception:
+            # Soft-fail; avoid crashing the main app if calendar build has an issue
+            pass
 
     def _build_calendar_header(self):
         for child in self.calendar_win.winfo_children():
@@ -2461,6 +2454,72 @@ class App:
             pass
 
         self._close_calendar()
+
+    # ------------------ Account Selectors (added) ------------------
+    def _inject_account_selectors(self):
+        """Create or refresh account selection comboboxes.
+
+        Current account selector lives in header.
+        Savings selector shows only when category == 'Épargne'.
+        """
+        try:
+            # Current account combobox
+            if not hasattr(self, '_current_account_cb'):
+                self._current_account_cb = ttk.Combobox(
+                    self.header_frame,
+                    textvariable=self._current_account_var,
+                    values=self.current_accounts,
+                    state='readonly',
+                    width=18,
+                    style=self.combobox_style,
+                )
+                # Increased left padding so it isn't stuck to the window border
+                self._current_account_cb.pack(side='left', padx=(12,8), pady=6)
+                self._current_account_cb.bind('<<ComboboxSelected>>', self._on_current_account_change)
+            else:
+                self._current_account_cb.configure(values=self.current_accounts)
+            if not self._current_account_var.get() and self.current_accounts:
+                self._current_account_var.set(self.current_accounts[0])
+                self.selected_current_account = self.current_accounts[0]
+            # Savings combobox (in entry frame) hidden unless Épargne
+            if not hasattr(self, '_savings_account_cb'):
+                self._savings_account_cb = ttk.Combobox(
+                    self.entry_frame,
+                    textvariable=self._savings_account_var,
+                    values=self.savings_accounts,
+                    state='readonly',
+                    width=20,
+                    style=self.combobox_style,
+                )
+                self._savings_account_cb.grid(row=2, column=1, padx=10, pady=(2,0), sticky='new')
+            # Bind category selection to visibility evaluation
+            try:
+                self.category_combobox.bind('<<ComboboxSelected>>', self._evaluate_savings_selector_visibility)
+            except Exception:
+                pass
+            self._evaluate_savings_selector_visibility()
+        except Exception as e:
+            print(f"Account selector init error: {e}")
+
+    def _evaluate_savings_selector_visibility(self, *_):
+        try:
+            if self.category_var.get().strip() == 'Épargne':
+                self._savings_account_cb.configure(values=self.savings_accounts)
+                self._savings_account_cb.grid()
+            else:
+                self._savings_account_var.set("")
+                self._savings_account_cb.grid_remove()
+        except Exception:
+            pass
+
+    def _on_current_account_change(self, *_):
+        sel = self._current_account_var.get().strip()
+        if sel and sel in self.current_accounts:
+            self.selected_current_account = sel
+            try:
+                self._save_settings()
+            except Exception:
+                pass
 
 if __name__ == "__main__":
     root = Tk()
