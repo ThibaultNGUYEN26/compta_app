@@ -120,6 +120,10 @@ class App:
         except TclError:
             pass
         self.combobox_style = "App.TCombobox"
+        # Compact combobox style for header account selector
+        self.header_combobox_style = "Header.TCombobox"
+        # Font for compact header combobox (initialized below in _update_fonts)
+        self.header_cb_font = tkfont.Font(family=FONT_FAMILY, size=FONT_MIN_SIZE)
 
         self.labels = []
         self.entries = []
@@ -147,17 +151,29 @@ class App:
         self.header_frame = Frame(self.root, bg=LIGHT_THEME["bg"])
         self.header_frame.pack(fill="x")
 
-        self.toggle_button = Button(
+        # Burger menu button (replaces theme toggle)
+        self.menu_button = Button(
             self.header_frame,
-            command=self.toggle_theme,
+            text="☰",
+            command=self._open_menu,
             highlightthickness=0,
             borderwidth=0,
             relief="flat",
             bg=LIGHT_THEME["bg"],
-            activebackground=LIGHT_THEME["bg"],
-            image=self.dark_mode_icon,
+            fg=LIGHT_THEME["fg"],
+            activebackground=LIGHT_THEME["entry_bg"],
+            activeforeground=LIGHT_THEME["fg"],
+            cursor="hand2",
+            font=(FONT_FAMILY, 16, "bold"),
         )
-        self.toggle_button.pack(side="right", padx=12, pady=8)
+        self.menu_button.pack(side="right", padx=12, pady=8)
+
+        # Prepare (hidden) overlay menu; built lazily on first open
+        self.menu_overlay = None
+        self.menu_close_button = None
+        self.menu_center_frame = None
+        self.menu_title_label = None
+        self.menu_theme_button = None
 
         # (Removed 'Comptes...' button per user request)
 
@@ -245,6 +261,11 @@ class App:
         self.category_combobox.configure(font=self.entry_font)
         self.category_combobox.bind("<<ComboboxSelected>>", self._clear_category_selection)
         self.category_combobox.bind("<FocusOut>", self._clear_category_selection)
+        # Ensure dropdown list (popdown) matches theme when opened
+        try:
+            self._bind_combobox_popdown_theming(self.category_combobox)
+        except Exception:
+            pass
 
         # Prélèvement toggle container
         self.prelevement_container = Frame(self.entry_frame, bg=LIGHT_THEME["bg"])
@@ -460,11 +481,9 @@ class App:
                 activeforeground=theme["toggle_thumb"],
             )
 
-        self.toggle_button.configure(
-            image=self.light_mode_icon if self.is_dark_mode else self.dark_mode_icon,
-            bg=theme["bg"],
-            activebackground=theme["bg"],
-        )
+        # Header burger button
+        if hasattr(self, "menu_button") and self.menu_button is not None:
+            self.menu_button.configure(bg=theme["bg"], fg=theme["fg"], activebackground=theme["entry_bg"], activeforeground=theme["fg"])
 
         for label in self.labels:
             label.configure(bg=theme["bg"], fg=theme["fg"])
@@ -476,6 +495,92 @@ class App:
                 entry.configure(bg=theme["entry_bg"], insertbackground=theme["entry_fg"], highlightbackground=theme["entry_border"], highlightcolor=theme["entry_border"])
             else:
                 entry.configure(bg=theme["entry_bg"], fg=theme["entry_fg"], highlightbackground=theme["entry_border"], highlightcolor=theme["entry_border"])
+
+        # Combobox theming (colors)
+        try:
+            self.style.configure(
+                self.combobox_style,
+                fieldbackground=theme["entry_bg"],
+                foreground=theme["entry_fg"],
+                background=theme["entry_bg"],
+                readonlybackground=theme["entry_bg"],
+                arrowcolor=theme["fg"],
+                bordercolor=theme["entry_border"],
+                lightcolor=theme["entry_border"],
+                darkcolor=theme["entry_border"],
+            )
+            # Apply to base style as well (some themes use TCombobox directly for field rendering)
+            self.style.configure(
+                'TCombobox',
+                fieldbackground=theme["entry_bg"],
+                foreground=theme["entry_fg"],
+                background=theme["entry_bg"],
+                readonlybackground=theme["entry_bg"],
+                arrowcolor=theme["fg"],
+            )
+            # Header compact combobox uses same colors but will have tighter padding via _update_fonts
+            self.style.configure(
+                self.header_combobox_style,
+                fieldbackground=theme["entry_bg"],
+                foreground=theme["entry_fg"],
+                background=theme["entry_bg"],
+                readonlybackground=theme["entry_bg"],
+                arrowcolor=theme["fg"],
+                bordercolor=theme["entry_border"],
+                lightcolor=theme["entry_border"],
+                darkcolor=theme["entry_border"],
+            )
+            # Ensure readonly state uses themed colors (Windows/clam)
+            self.style.map(
+                self.combobox_style,
+                fieldbackground=[('readonly', theme["entry_bg"]), ('!readonly', theme["entry_bg"]), ('active', theme["entry_bg"])],
+                background=[('readonly', theme["entry_bg"]), ('!readonly', theme["entry_bg"]), ('active', theme["entry_bg"])],
+                foreground=[('readonly', theme["entry_fg"]), ('!readonly', theme["entry_fg"]), ('active', theme["entry_fg"])],
+            )
+            self.style.map(
+                'TCombobox',
+                fieldbackground=[('readonly', theme["entry_bg"]), ('!readonly', theme["entry_bg"]), ('active', theme["entry_bg"])],
+                background=[('readonly', theme["entry_bg"]), ('!readonly', theme["entry_bg"]), ('active', theme["entry_bg"])],
+                foreground=[('readonly', theme["entry_fg"]), ('!readonly', theme["entry_fg"]), ('active', theme["entry_fg"])],
+            )
+            self.style.map(
+                self.header_combobox_style,
+                fieldbackground=[('readonly', theme["entry_bg"]), ('!readonly', theme["entry_bg"]), ('active', theme["entry_bg"])],
+                background=[('readonly', theme["entry_bg"]), ('!readonly', theme["entry_bg"]), ('active', theme["entry_bg"])],
+                foreground=[('readonly', theme["entry_fg"]), ('!readonly', theme["entry_fg"]), ('active', theme["entry_fg"])],
+            )
+        except Exception:
+            pass
+
+        # Dropdown list (popdown) colors via option database
+        try:
+            self.root.option_add('*TCombobox*Listbox.background', theme["entry_bg"])
+            self.root.option_add('*TCombobox*Listbox.foreground', theme["entry_fg"])
+            self.root.option_add('*TCombobox*Listbox.selectBackground', theme["toggle_track_active"])  # accent
+            self.root.option_add('*TCombobox*Listbox.selectForeground', theme["fg"])  # readable on accent
+            # Fallback patterns used by some Tk builds
+            self.root.option_add('*Combobox*Listbox.background', theme["entry_bg"])
+            self.root.option_add('*Combobox*Listbox.foreground', theme["entry_fg"])
+            self.root.option_add('*Combobox*Listbox.selectBackground', theme["toggle_track_active"])  # accent
+            self.root.option_add('*Combobox*Listbox.selectForeground', theme["fg"])  # readable on accent
+            # Generic Listbox defaults as a last resort (affects other listboxes too)
+            self.root.option_add('*Listbox.background', theme["entry_bg"])
+            self.root.option_add('*Listbox.foreground', theme["entry_fg"])
+            self.root.option_add('*Listbox.selectBackground', theme["toggle_track_active"])  # accent
+            self.root.option_add('*Listbox.selectForeground', theme["fg"])  # readable on accent
+        except Exception:
+            pass
+
+        # Re-apply popdown list theming for any open dropdowns
+        try:
+            if self.category_combobox is not None:
+                self._apply_combobox_list_theme(self.category_combobox)
+            if hasattr(self, '_current_account_cb') and self._current_account_cb:
+                self._apply_combobox_list_theme(self._current_account_cb)
+            if hasattr(self, '_savings_account_cb') and self._savings_account_cb:
+                self._apply_combobox_list_theme(self._savings_account_cb)
+        except Exception:
+            pass
 
         # Update appearance after theme change
         if hasattr(self, 'libelle_entry'):
@@ -548,6 +653,222 @@ class App:
         self._render_transaction_toggle(theme)
         self._render_prelevement_toggle(theme)
         self._refresh_calendar_theme()
+
+        # Theme overlay styling (if created)
+        self._apply_menu_theme()
+
+    # ------------------ Overlay Menu ------------------
+    def _ensure_menu_overlay(self):
+        if self.menu_overlay and self.menu_overlay.winfo_exists():
+            return
+        theme = self.current_theme
+        self.menu_overlay = Frame(self.root, bg=theme["bg"])  # full-size overlay
+        # Close button (top-right)
+        self.menu_close_button = Button(
+            self.menu_overlay,
+            text="✕",
+            command=self._close_menu,
+            relief="flat",
+            borderwidth=0,
+            bg=theme["bg"],
+            fg=theme["fg"],
+            activebackground=theme["entry_bg"],
+            activeforeground=theme["fg"],
+            font=(FONT_FAMILY, 16, "bold"),
+            cursor="hand2",
+        )
+        self.menu_close_button.place(relx=1.0, rely=0.0, x=-12, y=8, anchor="ne")
+
+        # Center content
+        self.menu_center_frame = Frame(self.menu_overlay, bg=theme["bg"])
+        self.menu_center_frame.place(relx=0.5, rely=0.5, anchor="center")
+
+        self.menu_title_label = Label(
+            self.menu_center_frame,
+            text="Thème",
+            bg=theme["bg"],
+            fg=theme["fg"],
+            font=(FONT_FAMILY, 18, "bold"),
+        )
+        self.menu_title_label.pack(pady=(0, 16))
+
+        # Single theme toggle button (sun in dark mode to switch to light, moon in light mode)
+        # No background behind the logo: match overlay bg and remove highlights
+        self.menu_theme_button = Button(
+            self.menu_center_frame,
+            image=self._menu_theme_image(),
+            relief="flat",
+            borderwidth=0,
+            highlightthickness=0,
+            highlightbackground=theme["bg"],
+            bg=theme["bg"],
+            activebackground=theme["bg"],
+            command=self.toggle_theme,
+            cursor="hand2",
+        )
+        self.menu_theme_button.pack(pady=(0, 4))
+
+    def _apply_menu_theme(self):
+        if not (self.menu_overlay and self.menu_overlay.winfo_exists()):
+            return
+        theme = self.current_theme
+        try:
+            self.menu_overlay.configure(bg=theme["bg"])
+            self.menu_close_button.configure(bg=theme["bg"], fg=theme["fg"], activebackground=theme["entry_bg"], activeforeground=theme["fg"])
+            self.menu_center_frame.configure(bg=theme["bg"])
+            self.menu_title_label.configure(bg=theme["bg"], fg=theme["fg"])
+            if self.menu_theme_button is not None:
+                self.menu_theme_button.configure(
+                    bg=theme["bg"],
+                    activebackground=theme["bg"],
+                    highlightthickness=0,
+                    highlightbackground=theme["bg"],
+                    image=self._menu_theme_image(),
+                )
+        except Exception:
+            pass
+
+    def _open_menu(self):
+        self._ensure_menu_overlay()
+        # Show overlay full screen
+        self.menu_overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self.menu_overlay.lift()
+        # Optional: focus overlay and bind Esc to close
+        try:
+            self.menu_overlay.focus_set()
+            self.menu_overlay.bind("<Escape>", lambda e: self._close_menu())
+        except Exception:
+            pass
+        # Ensure icon is correct for current theme when opening
+        self._apply_menu_theme()
+
+    def _close_menu(self):
+        if self.menu_overlay and self.menu_overlay.winfo_exists():
+            self.menu_overlay.place_forget()
+
+    def _set_theme(self, dark: bool):
+        self.is_dark_mode = bool(dark)
+        self.apply_theme()
+        # Persist preference
+        try:
+            self._save_settings()
+        except Exception:
+            pass
+
+    def _menu_theme_image(self):
+        """Return sun icon when currently dark (to switch to light), else moon icon."""
+        return self.light_mode_icon if self.is_dark_mode else self.dark_mode_icon
+
+    # ----- Combobox popdown theming helpers -----
+    def _apply_combobox_list_theme(self, cb):
+        """Apply current theme to the dropdown list (popdown) of a ttk.Combobox."""
+        theme = self.current_theme
+        try:
+            # Flush pending geometry so popdown widgets exist
+            try:
+                self.root.update_idletasks()
+            except Exception:
+                pass
+            popdown = cb.tk.call('ttk::combobox::PopdownWindow', str(cb))
+            pop = None
+            try:
+                pop = cb.nametowidget(popdown)
+                pop.configure(bg=theme["entry_bg"])
+            except Exception:
+                pass
+
+            # Try the standard path first
+            def _style_listbox(lb):
+                try:
+                    lb.configure(
+                        background=theme["entry_bg"],
+                        bg=theme["entry_bg"],
+                        foreground=theme["entry_fg"],
+                        fg=theme["entry_fg"],
+                        selectbackground=theme["toggle_track_active"],
+                        selectforeground=theme["fg"],
+                        highlightbackground=theme["entry_bg"],
+                        highlightcolor=theme["entry_bg"],
+                        highlightthickness=0,
+                        relief='flat',
+                    )
+                    try:
+                        lb.configure(font=self.entry_font)
+                    except Exception:
+                        pass
+                    try:
+                        lb.update_idletasks()
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+
+            # Standard child path
+            try:
+                frame = cb.nametowidget(popdown + '.f')
+                try:
+                    frame.configure(bg=theme["entry_bg"])
+                except Exception:
+                    pass
+                try:
+                    lb = cb.nametowidget(popdown + '.f.l')
+                    _style_listbox(lb)
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+            # Fallback: recursively search for any Listbox under the popdown
+            try:
+                root_w = pop if pop is not None else cb.nametowidget(popdown)
+                stack = [root_w]
+                while stack:
+                    w = stack.pop()
+                    try:
+                        wclass = w.winfo_class()
+                    except Exception:
+                        wclass = ''
+                    # Theme container backgrounds
+                    if wclass in ('TFrame', 'Frame', 'Toplevel'):
+                        try:
+                            w.configure(bg=theme["entry_bg"])
+                        except Exception:
+                            pass
+                    if wclass == 'Listbox':
+                        _style_listbox(w)
+                    # Recurse
+                    try:
+                        stack.extend(w.winfo_children())
+                    except Exception:
+                        pass
+            except Exception:
+                # If the listbox isn't ready yet, try again shortly
+                try:
+                    self.root.after(20, lambda: self._apply_combobox_list_theme(cb))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def _bind_combobox_popdown_theming(self, cb):
+        """Bind events so when the combobox opens, its dropdown list gets themed."""
+        def _apply_later(_=None):
+            # Try a few times after open to handle platform timing
+            self._schedule_popdown_theme(cb, attempts=4, delay=15)
+        try:
+            cb.bind('<Button-1>', _apply_later, add='+')
+            cb.bind('<Alt-Down>', _apply_later, add='+')
+            cb.bind('<F4>', _apply_later, add='+')
+        except Exception:
+            pass
+
+    def _schedule_popdown_theme(self, cb, attempts=10, delay=20):
+        """Schedule several attempts to apply popdown theming to handle creation timing."""
+        try:
+            for i in range(max(1, int(attempts))):
+                self.root.after(delay * (i + 1), lambda c=cb: self._apply_combobox_list_theme(c))
+        except Exception:
+            pass
 
     def _clear_category_selection(self, *_):
         if self.category_combobox is not None:
@@ -721,6 +1042,9 @@ class App:
 
         self.entry_font.configure(size=new_size)
         self.label_font.configure(size=new_size)
+        # Slightly smaller font for compact header combobox
+        header_size = max(FONT_MIN_SIZE, new_size - 2)
+        self.header_cb_font.configure(size=header_size)
 
         for label in self.labels:
             label.configure(font=self.label_font)
@@ -735,10 +1059,40 @@ class App:
 
         if self.category_combobox is not None:
             self.category_combobox.configure(font=self.entry_font)
-            self.style.configure(self.combobox_style, font=self.entry_font)
-            # Also configure the dropdown list font
+            # Style: scale combobox font, padding, and arrow size to match overall UI
             try:
-                self.style.configure("App.TCombobox.Listbox", font=self.entry_font)
+                # Font
+                self.style.configure(self.combobox_style, font=self.entry_font)
+                # Slightly smaller padding/arrow for a leaner look
+                linespace = max(1, int(self.entry_font.metrics('linespace')))
+                pad_y = max(2, int(linespace * 0.20))
+                arrowsize = max(10, int(linespace * 0.80))
+                self.style.configure(self.combobox_style, padding=(6, pad_y), arrowsize=arrowsize)
+                # Even tighter padding/arrow for header compact style
+                h_linespace = max(1, int(self.header_cb_font.metrics('linespace')))
+                h_pad_y = max(1, int(h_linespace * 0.12))
+                h_arrowsize = max(8, int(h_linespace * 0.60))
+                self.style.configure(self.header_combobox_style, font=self.header_cb_font, padding=(4, h_pad_y), arrowsize=h_arrowsize)
+            except Exception:
+                pass
+            # Ensure other comboboxes follow the same font (account/savings selectors)
+            try:
+                if hasattr(self, '_current_account_cb') and self._current_account_cb:
+                    # Use compact header font and reduce external vertical padding
+                    self._current_account_cb.configure(font=self.header_cb_font)
+                    try:
+                        linespace = max(1, int(self.header_cb_font.metrics('linespace')))
+                        header_pady = max(1, int(linespace * 0.10))
+                        self._current_account_cb.pack_configure(pady=header_pady)
+                    except Exception:
+                        pass
+                if hasattr(self, '_savings_account_cb') and self._savings_account_cb:
+                    self._savings_account_cb.configure(font=self.entry_font)
+            except Exception:
+                pass
+            # Configure dropdown list (popdown) font via option database
+            try:
+                self.root.option_add('*TCombobox*Listbox.font', self.entry_font)
             except Exception:
                 pass
             self._clear_category_selection()
@@ -2485,14 +2839,20 @@ class App:
                     textvariable=self._current_account_var,
                     values=self.current_accounts,
                     state='readonly',
-                    width=18,
-                    style=self.combobox_style,
+                    height=4,  # fewer visible rows in dropdown
+                    width=14,  # narrower field
+                    style=self.header_combobox_style,
                 )
-                # Increased left padding so it isn't stuck to the window border
-                self._current_account_cb.pack(side='left', padx=(12,8), pady=6)
+                # Slightly reduced vertical padding to keep header compact
+                self._current_account_cb.pack(side='left', padx=(12,8), pady=2)
                 self._current_account_cb.bind('<<ComboboxSelected>>', self._on_current_account_change)
+                try:
+                    self._bind_combobox_popdown_theming(self._current_account_cb)
+                except Exception:
+                    pass
             else:
-                self._current_account_cb.configure(values=self.current_accounts)
+                # Ensure the dropdown height stays compact and values are refreshed
+                self._current_account_cb.configure(values=self.current_accounts, height=4, width=14, style=self.header_combobox_style)
             if not self._current_account_var.get() and self.current_accounts:
                 self._current_account_var.set(self.current_accounts[0])
                 self.selected_current_account = self.current_accounts[0]
@@ -2507,6 +2867,10 @@ class App:
                     style=self.combobox_style,
                 )
                 self._savings_account_cb.grid(row=2, column=1, padx=10, pady=(2,0), sticky='new')
+                try:
+                    self._bind_combobox_popdown_theming(self._savings_account_cb)
+                except Exception:
+                    pass
             # Bind category selection to visibility evaluation
             try:
                 self.category_combobox.bind('<<ComboboxSelected>>', self._evaluate_savings_selector_visibility)
