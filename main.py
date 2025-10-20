@@ -6,7 +6,7 @@ import calendar as _calendar
 try:
     from openpyxl import Workbook, load_workbook
     from openpyxl.utils import get_column_letter
-    from openpyxl.styles import PatternFill, Font
+    from openpyxl.styles import PatternFill, Font, Alignment
     from openpyxl.chart import PieChart, BarChart, Reference, LineChart
     from openpyxl.chart.legend import Legend  # added legend import
     try:
@@ -626,7 +626,7 @@ class App:
                 parsed_date = datetime.strptime(date_value, "%d-%m-%Y")
                 year = parsed_date.year
                 month = parsed_date.month
-                self._write_to_excel(date_value, libelle_value, montant_value, category_value, transaction_type, prelevement_status, year, month, current_account, savings_account)
+                self._write_to_excel(date_value, libelle_value, montant_value, category_value, transaction_type, prelevement_status, year, month)
                 print(f"Successfully added: Date={date_value}, Libellé={libelle_value}, Montant={montant_value}, Catégorie={category_value}, Type={transaction_type}, Prélèvement={prelevement_status}")
                 self.libelle_var.set(self.libelle_placeholder); self.libelle_has_placeholder = True; self._update_libelle_appearance()
                 self.montant_var.set(self.montant_placeholder); self.montant_has_placeholder = True; self._update_montant_appearance()
@@ -1564,15 +1564,12 @@ class App:
                     ws = wb[sheet_name]
                 else:
                     ws = wb.create_sheet(sheet_name)
-                    # Add headers (include Compte column G)
-                    headers = ["Date", "Libellé", "Montant", "Catégorie", "Type", "Prélèvement", "Compte"]
+                    # Add headers including Transaction column G
+                    headers = ["Date", "Libellé", "Montant", "Catégorie", "Type", "Prélèvement", "Transaction"]
                     for col, header in enumerate(headers, 1):
                         ws.cell(row=1, column=col, value=header)
 
-                # Ensure Compte header present if sheet pre-existed
-                if ws.cell(row=1, column=7).value is None:
-                    ws.cell(row=1, column=7, value="Compte")
-                # Find the next empty row considering only transaction data columns (A-G now)
+                # Find the next empty row considering transaction data columns (A-G)
                 next_row = self._find_next_transaction_row(ws)
 
                 # Add the data
@@ -1597,6 +1594,22 @@ class App:
                 ws.cell(row=next_row, column=4, value=category_value)
                 ws.cell(row=next_row, column=5, value=transaction_type)
                 ws.cell(row=next_row, column=6, value=prelevement_status)
+                # Column G Transaction: directional string from -> to
+                try:
+                    current_account = self.selected_current_account or (self.current_accounts[0] if self.current_accounts else "Compte Courant")
+                except Exception:
+                    current_account = "Compte Courant"
+                transaction_str = current_account
+                if category_value == "Épargne":
+                    savings_account = getattr(self, '_savings_account_var', StringVar()).get().strip()
+                    if savings_account:
+                        if transaction_type == "Entrée":
+                            # Withdrawal from savings into current (savings loses, current gains)
+                            transaction_str = f"{savings_account} -> {current_account}"
+                        else:
+                            # Deposit from current into savings (current loses, savings gains)
+                            transaction_str = f"{current_account} -> {savings_account}"
+                ws.cell(row=next_row, column=7, value=transaction_str)
 
                 # Apply color formatting with priority: Prélèvement > Transaction Type
                 if prelevement_status == "Oui":
@@ -1612,28 +1625,11 @@ class App:
                     fill = PatternFill(start_color="FFCDD2", end_color="FFCDD2", fill_type="solid")
                     font_color = Font(color="C62828")
 
-                # Apply formatting to all cells in the row
-                for col in range(1, 8):  # Columns 1-7 (include Compte)
+                # Apply formatting to all cells in the row (columns 1-7 now)
+                for col in range(1, 8):  # Columns 1-7
                     cell = ws.cell(row=next_row, column=col)
                     cell.fill = fill
                     cell.font = font_color
-
-                # Write Compte column
-                try:
-                    current_account = getattr(self, 'selected_current_account', None) or (self.current_accounts[0] if self.current_accounts else "Compte Principal")
-                except Exception:
-                    current_account = "Compte Principal"
-                compte_value = current_account
-                if category_value == "Épargne":
-                    # Determine direction based on type
-                    savings_account = getattr(self, '_savings_account_var', StringVar()).get().strip()
-                    if savings_account:
-                        if transaction_type == "Entrée":
-                            # Money moving from current to savings
-                            compte_value = f"{current_account} -> {savings_account}"
-                        else:
-                            compte_value = f"{savings_account} -> {current_account}"
-                ws.cell(row=next_row, column=7, value=compte_value)
 
                 # Normalize montant column formats
                 try:
@@ -1817,6 +1813,16 @@ class App:
             self.savings_accounts = [str(x) for x in sav_list if isinstance(x, (str, int, float))]
             # Remove legacy default 'Épargne Principale' if it exists
             self.savings_accounts = [acc for acc in self.savings_accounts if acc.strip().lower() != "épargne principale".lower()]
+        # Selected accounts
+        sel_cur = data.get("selected_current_account")
+        if isinstance(sel_cur, str) and sel_cur in self.current_accounts:
+            self.selected_current_account = sel_cur
+        sel_sav = data.get("selected_savings_account")
+        if isinstance(sel_sav, str) and sel_sav in self.savings_accounts:
+            try:
+                self._savings_account_var.set(sel_sav)
+            except Exception:
+                pass
         # Provide sensible defaults if empty
         if not self.current_accounts:
             self.current_accounts = ["Compte Courant"]
@@ -1839,6 +1845,8 @@ class App:
             "chosen_parent_dir": str(self._chosen_parent_dir),
             "current_accounts": [acc for acc in self.current_accounts if str(acc).strip()],
             "savings_accounts": [acc for acc in self.savings_accounts if str(acc).strip() and str(acc).strip().lower() != "épargne principale".lower()],
+            "selected_current_account": self.selected_current_account if self.selected_current_account in self.current_accounts else (self.current_accounts[0] if self.current_accounts else None),
+            "selected_savings_account": (getattr(self, '_savings_account_var', StringVar()).get().strip() or None) if self.savings_accounts else None,
         }
         try:
             path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
@@ -1868,14 +1876,25 @@ class App:
         This matches expectation: a 'Sortie Épargne' increases current balance and decreases savings.
         Savings balance accumulates net movements (positive => more saved, negative => withdrawn).
 
-        Additional statistics added:
-          - Montant Total Sorties (sum of all Sortie amounts)
-          - Montant Total Entrées (sum of all Entrée amounts)
-          - Nombre Prélèvements (count where Prélèvement == 'Oui')
-          - Montant Total Prélèvements (sum of amounts where Prélèvement == 'Oui')
-        """
-        current_account_balance = 0.0
-        savings_balance = 0.0
+                Additional statistics added:
+                    - Montant Total Sorties (sum of all Sortie amounts)
+                    - Montant Total Entrées (sum of all Entrée amounts)
+                    - Nombre Prélèvements (count where Prélèvement == 'Oui')
+                    - Montant Total Prélèvements (sum of amounts where Prélèvement == 'Oui')
+                """
+        # Build dynamic per-account balance structures.
+        # We treat column 7 ('Compte') values to infer transfers and attribution.
+        # Formats written earlier:
+        #   Normal (non-Épargne): '<CurrentAccountName>'
+        #   Épargne Entrée:  '<Current> -> <Savings>'  (money moves current -> savings)
+        #   Épargne Sortie:  '<Savings> -> <Current>'  (money moves savings -> current)
+        # We do NOT require adding extra columns; we parse these directional strings.
+        # Initialize dictionaries for balances; default 0.0.
+        current_balances = {acc: 0.0 for acc in self.current_accounts}
+        savings_balances = {acc: 0.0 for acc in self.savings_accounts}
+
+        # Aggregate global balances (legacy single figures) as totals of dicts after loop.
+        # (We will compute totals after processing all rows.)
         count_income = 0
         count_outcome = 0
         total_sorties_amount = 0.0
@@ -1895,6 +1914,7 @@ class App:
             cat_cell = ws.cell(row=r, column=4).value
             montant_cell = ws.cell(row=r, column=3).value
             prelevement_cell = ws.cell(row=r, column=6).value
+            transaction_cell = ws.cell(row=r, column=7).value
             try:
                 amount = float(str(montant_cell).replace(',', '.')) if montant_cell not in (None, "") else 0.0
             except Exception:
@@ -1912,20 +1932,57 @@ class App:
                 count_income += 1
                 total_entrees_amount += amount
                 if is_epargne:
-                    # Money moved from current -> savings
-                    current_account_balance -= amount
-                    savings_balance += amount
+                    # New expected format for Entrée: 'Savings -> Current' (withdraw savings, add to current)
+                    if isinstance(transaction_cell, str) and '->' in transaction_cell:
+                        left, right = [p.strip() for p in transaction_cell.split('->', 1)]
+                        sav_name, cur_name = left, right
+                        if sav_name in savings_balances:
+                            savings_balances[sav_name] -= amount
+                        if cur_name in current_balances:
+                            current_balances[cur_name] += amount
+                    else:
+                        if self.savings_accounts:
+                            savings_balances[self.savings_accounts[0]] -= amount
+                        if self.current_accounts:
+                            current_balances[self.current_accounts[0]] += amount
                 else:
-                    current_account_balance += amount
+                    # Non-savings entry increases origin account (transaction_cell may just be account name)
+                    acc_name = None
+                    if isinstance(transaction_cell, str):
+                        name = transaction_cell.strip()
+                        if name in current_balances:
+                            acc_name = name
+                    if acc_name is None and self.current_accounts:
+                        acc_name = self.current_accounts[0]
+                    if acc_name:
+                        current_balances[acc_name] += amount
             elif type_cell == "Sortie":
                 count_outcome += 1
                 total_sorties_amount += amount
                 if is_epargne:
-                    # Money moved from savings -> current
-                    current_account_balance += amount
-                    savings_balance -= amount
+                    # New expected format for Sortie: 'Current -> Savings' (withdraw current, add to savings)
+                    if isinstance(transaction_cell, str) and '->' in transaction_cell:
+                        left, right = [p.strip() for p in transaction_cell.split('->', 1)]
+                        cur_name, sav_name = left, right
+                        if cur_name in current_balances:
+                            current_balances[cur_name] -= amount
+                        if sav_name in savings_balances:
+                            savings_balances[sav_name] += amount
+                    else:
+                        if self.current_accounts:
+                            current_balances[self.current_accounts[0]] -= amount
+                        if self.savings_accounts:
+                            savings_balances[self.savings_accounts[0]] += amount
                 else:
-                    current_account_balance -= amount
+                    acc_name = None
+                    if isinstance(transaction_cell, str):
+                        name = transaction_cell.strip()
+                        if name in current_balances:
+                            acc_name = name
+                    if acc_name is None and self.current_accounts:
+                        acc_name = self.current_accounts[0]
+                    if acc_name:
+                        current_balances[acc_name] -= amount
 
             if prelevement_cell == "Oui":
                 count_prelevements += 1
@@ -1946,17 +2003,33 @@ class App:
                     if prev == 0 and amount != 0 and cat_cell not in outcome_order:
                         outcome_order.append(cat_cell)
 
-        # Build stats list (global first)
-        stats = [
-            ("Solde Compte Courant", current_account_balance),
-            ("Solde Épargne", savings_balance),
+        # Compute totals from per-account dictionaries
+        total_current_balance = sum(current_balances.values()) if current_balances else 0.0
+        total_savings_balance = sum(savings_balances.values()) if savings_balances else 0.0
+
+        # Build stats list in requested order:
+        # 1..n: Solde Compte Courant i
+        # 1..m: Solde Épargne i
+        # Totals after the per-account lines
+        stats = []
+        # Current accounts
+        for acc in self.current_accounts:
+            stats.append((f"Solde {acc}", current_balances.get(acc, 0.0)))
+        # Savings accounts
+        for acc in self.savings_accounts:
+            stats.append((f"Solde {acc}", savings_balances.get(acc, 0.0)))
+        # Totals
+        stats.append(("Montant Total Solde Courant", total_current_balance))
+        stats.append(("Montant Total Solde Épargne", total_savings_balance))
+        # Existing global metrics
+        stats.extend([
             ("Nombre Sorties", count_outcome),
             ("Nombre Entrées", count_income),
             ("Montant Total Sorties", total_sorties_amount),
             ("Montant Total Entrées", total_entrees_amount),
             ("Nombre Prélèvements", count_prelevements),
             ("Montant Total Prélèvements", total_prelevements_amount),
-        ]
+        ])
         # NOTE (user request): per-category stats removed from H/I area.
         # We still compute cat_stats above to feed the doughnut chart and
         # populate temporary columns K/L, but we no longer append the
@@ -2426,6 +2499,10 @@ class App:
                     continue
                 prev_font = cell.font
                 cell.font = Font(bold=True, size=EXCEL_TITLE_FONT_SIZE, color=getattr(prev_font, 'color', None))
+                try:
+                    cell.alignment = Alignment(horizontal='right')
+                except Exception:
+                    pass
 
             # Body rows
             for r in range(2, max_row + 1):
@@ -2443,12 +2520,20 @@ class App:
                         continue
                     prev_font = cell.font
                     cell.font = Font(bold=False, size=EXCEL_BODY_FONT_SIZE, color=getattr(prev_font, 'color', None))
+                    try:
+                        cell.alignment = Alignment(horizontal='right')
+                    except Exception:
+                        pass
             # Re-assert Income title styling explicitly (safety)
             try:
                 income_cell = ws.cell(row=15, column=11)
                 if income_cell.value == "Income":
                     prev_color = getattr(income_cell.font, 'color', None)
                     income_cell.font = Font(bold=True, size=EXCEL_TITLE_FONT_SIZE, color=prev_color)
+                    try:
+                        income_cell.alignment = Alignment(horizontal='right')
+                    except Exception:
+                        pass
             except Exception:
                 pass
         except Exception as e:
@@ -2538,6 +2623,8 @@ class App:
         try:
             for col in range(1, 7):  # A-F
                 ws.column_dimensions[get_column_letter(col)].width = 20
+            # Column G (Transaction) wider for directional strings
+            ws.column_dimensions[get_column_letter(7)].width = 30
             # Stats columns H (8) & I (9)
             ws.column_dimensions[get_column_letter(8)].width = 40  # H
             ws.column_dimensions[get_column_letter(9)].width = 20  # I
