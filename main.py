@@ -7,7 +7,7 @@ try:
     from openpyxl import Workbook, load_workbook
     from openpyxl.utils import get_column_letter
     from openpyxl.styles import PatternFill, Font, Alignment
-    from openpyxl.chart import PieChart, BarChart, Reference, LineChart
+    from openpyxl.chart import PieChart, BarChart, Reference
     from openpyxl.chart.legend import Legend  # added legend import
     try:
         # Data labels for better readability (percentages inside slices)
@@ -2281,106 +2281,6 @@ class App:
 
                 # Continue even if bar chart fails
 
-            # -------- Line Chart: Daily Income / Outcome --------
-            try:
-                DATE_COL = 30  # AD
-                INC_COL = 31   # AE
-                OUT_COL = 32   # AF
-                # Clear previous area (limited rows for safety)
-                for r in range(1, min(ws.max_row + 2, 400)):
-                    for c in (DATE_COL, INC_COL, OUT_COL):
-                        ws.cell(row=r, column=c).value = None
-                from collections import defaultdict
-                from datetime import datetime as _dt
-                daily = defaultdict(lambda: {"inc": 0.0, "out": 0.0})
-                for r in range(2, ws.max_row + 1):
-                    raw_date = ws.cell(row=r, column=1).value
-                    t = ws.cell(row=r, column=5).value
-                    mval = ws.cell(row=r, column=3).value
-                    try:
-                        amount = float(str(mval).replace(',', '.')) if mval not in (None, "") else 0.0
-                    except Exception:
-                        amount = 0.0
-                    if amount == 0:
-                        continue
-                    d = raw_date
-                    if isinstance(d, str):
-                        for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d"):
-                            try:
-                                d = _dt.strptime(d, fmt).date()
-                                break
-                            except Exception:
-                                continue
-                    if d is None:
-                        continue
-                    if t == "Entrée":
-                        daily[d]["inc"] += amount
-                    elif t == "Sortie":
-                        daily[d]["out"] += amount
-                if daily:
-                    ordered = sorted(daily.items(), key=lambda x: x[0])
-                    ws.cell(row=1, column=DATE_COL, value="Date")
-                    ws.cell(row=1, column=INC_COL, value="Income")
-                    ws.cell(row=1, column=OUT_COL, value="Outcome")
-                    last_row = 1
-                    for idx, (d, vals) in enumerate(ordered, start=2):
-                        ws.cell(row=idx, column=DATE_COL, value=d)
-                        if hasattr(d, 'strftime'):
-                            try:
-                                ws.cell(row=idx, column=DATE_COL).number_format = "dd/mm/yyyy"
-                            except Exception:
-                                pass
-                        ic = ws.cell(row=idx, column=INC_COL, value=vals['inc'])
-                        oc = ws.cell(row=idx, column=OUT_COL, value=vals['out'])
-                        try:
-                            ic.number_format = "#,##0.00 [$€-fr-FR]"
-                            oc.number_format = "#,##0.00 [$€-fr-FR]"
-                        except Exception:
-                            pass
-                        last_row = idx
-                    data_ref = Reference(ws, min_col=INC_COL, max_col=OUT_COL, min_row=1, max_row=last_row)
-                    cats_ref = Reference(ws, min_col=DATE_COL, max_col=DATE_COL, min_row=2, max_row=last_row)
-                    line_chart = LineChart()
-                    line_chart.add_data(data_ref, titles_from_data=True)
-                    line_chart.set_categories(cats_ref)
-                    line_chart.title = None
-                    line_chart.y_axis.title = None
-                    line_chart.x_axis.title = None
-                    line_chart.x_axis.number_format = 'dd/mm/yyyy'
-                    # Style series
-                    try:
-                        colors = ["2E7D32", "C62828"]
-                        for i, ser in enumerate(line_chart.series):
-                            gp = getattr(ser, 'graphicalProperties', None)
-                            if gp is not None:
-                                try:
-                                    gp.line.solidFill = colors[i % len(colors)]
-                                    gp.line.width = 20000
-                                except Exception:
-                                    pass
-                            try:
-                                ser.marker.symbol = 'circle'
-                                ser.marker.size = 6
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
-                    # Remove any previous daily/cumulative line chart
-                    try:
-                        to_remove = []
-                        for obj in ws._charts:
-                            if hasattr(obj, 'series') and len(getattr(obj, 'series', [])) in (2, 3):
-                                if getattr(obj, 'title', None) in (None, ''):
-                                    to_remove.append(obj)
-                        for obj in to_remove:
-                            ws._charts.remove(obj)
-                    except Exception:
-                        pass
-                    line_chart.width = CHART_WIDTH * 0.9
-                    line_chart.height = CHART_HEIGHT * 0.75
-                    ws.add_chart(line_chart, "AC18")
-            except Exception as e:
-                print(f"Warning: could not create daily income/outcome line chart: {e}")
 
             # -------- Income Chart (Entrées) --------
             labels_ref_in = Reference(ws, min_col=11, max_col=11, min_row=16, max_row=27)
@@ -2624,7 +2524,7 @@ class App:
             for col in range(1, 7):  # A-F
                 ws.column_dimensions[get_column_letter(col)].width = 20
             # Column G (Transaction) wider for directional strings
-            ws.column_dimensions[get_column_letter(7)].width = 30
+            ws.column_dimensions[get_column_letter(7)].width = 40
             # Stats columns H (8) & I (9)
             ws.column_dimensions[get_column_letter(8)].width = 40  # H
             ws.column_dimensions[get_column_letter(9)].width = 20  # I
