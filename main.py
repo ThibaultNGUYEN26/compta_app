@@ -113,6 +113,12 @@ class App:
 
         self.label_font = tkfont.Font(family=FONT_FAMILY, size=FONT_MIN_SIZE)
         self.entry_font = tkfont.Font(family=FONT_FAMILY, size=FONT_MIN_SIZE)
+        # Slightly larger font dedicated to combobox dropdown list items for better readability
+        try:
+            self.dropdown_font = tkfont.Font(family=FONT_FAMILY, size=FONT_MIN_SIZE + 2)
+        except Exception:
+            # Fallback to entry font if creation fails
+            self.dropdown_font = self.entry_font
 
         self.style = ttk.Style(self.root)
         try:
@@ -257,7 +263,7 @@ class App:
             style=self.combobox_style,
             exportselection=False,
         )
-        self.category_combobox.grid(row=1, column=3, sticky="new", padx=10, pady=(0, 8))
+        self.category_combobox.grid(row=1, column=3, sticky="new", padx=10, pady=(0, 20))
         self.category_combobox.configure(font=self.entry_font)
         self.category_combobox.bind("<<ComboboxSelected>>", self._clear_category_selection)
         self.category_combobox.bind("<FocusOut>", self._clear_category_selection)
@@ -707,6 +713,11 @@ class App:
             cursor="hand2",
         )
         self.menu_theme_button.pack(pady=(0, 4))
+        # Directly show accounts editor without intermediate button
+        try:
+            self._show_accounts_editor()
+        except Exception:
+            pass
 
     def _apply_menu_theme(self):
         if not (self.menu_overlay and self.menu_overlay.winfo_exists()):
@@ -725,6 +736,37 @@ class App:
                     highlightbackground=theme["bg"],
                     image=self._menu_theme_image(),
                 )
+            # Inline accounts editor theming (recursive)
+            if hasattr(self, '_accounts_editor_frame') and self._accounts_editor_frame and self._accounts_editor_frame.winfo_exists():
+                try:
+                    root_frame = self._accounts_editor_frame
+                    root_frame.configure(bg=theme["bg"])
+                    stack = [root_frame]
+                    while stack:
+                        node = stack.pop()
+                        try:
+                            for child in node.winfo_children():
+                                stack.append(child)
+                                cls = child.winfo_class()
+                                if cls in ('Frame','TFrame'):
+                                    try: child.configure(bg=theme["bg"]) ;
+                                    except Exception: pass
+                                elif cls in ('Label','TLabel'):
+                                    try: child.configure(bg=theme["bg"], fg=theme["fg"]) ;
+                                    except Exception: pass
+                                elif cls in ('Button','TButton'):
+                                    try: child.configure(bg=theme["entry_bg"], fg=theme["entry_fg"], activebackground=theme["toggle_track"], activeforeground=theme["toggle_thumb"]) ;
+                                    except Exception: pass
+                                elif cls == 'Listbox':
+                                    try: child.configure(bg=theme["entry_bg"], fg=theme["entry_fg"], selectbackground=theme["toggle_track_active"], selectforeground=theme["fg"]) ;
+                                    except Exception: pass
+                                elif cls in ('Entry','TEntry'):
+                                    try: child.configure(bg=theme["entry_bg"], fg=theme["entry_fg"]) ;
+                                    except Exception: pass
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -758,6 +800,166 @@ class App:
     def _menu_theme_image(self):
         """Return sun icon when currently dark (to switch to light), else moon icon."""
         return self.light_mode_icon if self.is_dark_mode else self.dark_mode_icon
+
+    def _refresh_accounts_editor_theme(self):
+        """Force re-theming of accounts editor (safe if not present)."""
+        try:
+            self._apply_menu_theme()
+        except Exception:
+            pass
+
+    # ---- Inline Accounts Editor (Menu) ----
+    def _show_accounts_editor(self):
+        """Show side-by-side current & savings accounts editor inside menu overlay."""
+        if not (self.menu_overlay and self.menu_overlay.winfo_exists()):
+            self._ensure_menu_overlay()
+        # Remove previous editor
+        try:
+            if hasattr(self, '_accounts_editor_frame') and self._accounts_editor_frame and self._accounts_editor_frame.winfo_exists():
+                self._accounts_editor_frame.destroy()
+        except Exception:
+            pass
+        theme = self.current_theme
+        editor = Frame(self.menu_center_frame, bg=theme['bg'])
+        editor.pack(pady=(16,0), fill='both', expand=True)
+        self._accounts_editor_frame = editor
+
+        title = Label(editor, text="Gestion des Comptes", font=(FONT_FAMILY, 16, 'bold'), bg=theme['bg'], fg=theme['fg'])
+        title.pack(pady=(0,8))
+
+        cols = Frame(editor, bg=theme['bg'])
+        cols.pack(fill='both', expand=True)
+
+        # Current accounts column
+        cur_col = Frame(cols, bg=theme['bg'])
+        cur_col.pack(side='left', fill='both', expand=True, padx=(0,8))
+        cur_lbl = Label(cur_col, text="Comptes Courants", font=(FONT_FAMILY, 13, 'bold'), bg=theme['bg'], fg=theme['fg'])
+        cur_lbl.pack(anchor='w')
+        self._menu_cur_listbox = Listbox(cur_col, height=6, activestyle='none')
+        self._menu_cur_listbox.pack(fill='x', pady=4)
+        for acc in self.current_accounts:
+            try: self._menu_cur_listbox.insert('end', acc)
+            except Exception: pass
+        cur_add_row = Frame(cur_col, bg=theme['bg'])
+        cur_add_row.pack(fill='x', pady=(2,4))
+        self._menu_cur_new_var = StringVar()
+        cur_entry = Entry(cur_add_row, textvariable=self._menu_cur_new_var, width=18)
+        cur_entry.pack(side='left', padx=(0,6))
+        cur_add_btn = Button(cur_add_row, text="Ajouter", command=self._menu_add_current_account, relief='flat', bg=theme['toggle_track_active'], fg=theme['toggle_thumb'])
+        cur_add_btn.pack(side='left')
+        cur_remove_btn = Button(cur_col, text="Supprimer sélection", command=self._menu_remove_current_account, relief='flat', bg=theme['entry_bg'], fg=theme['entry_fg'])
+        cur_remove_btn.pack(anchor='e', pady=(0,4))
+
+        # Savings accounts column
+        sav_col = Frame(cols, bg=theme['bg'])
+        sav_col.pack(side='left', fill='both', expand=True, padx=(8,0))
+        sav_lbl = Label(sav_col, text="Comptes Épargne", font=(FONT_FAMILY, 13, 'bold'), bg=theme['bg'], fg=theme['fg'])
+        sav_lbl.pack(anchor='w')
+        self._menu_sav_listbox = Listbox(sav_col, height=6, activestyle='none')
+        self._menu_sav_listbox.pack(fill='x', pady=4)
+        for acc in self.savings_accounts:
+            try: self._menu_sav_listbox.insert('end', acc)
+            except Exception: pass
+        sav_add_row = Frame(sav_col, bg=theme['bg'])
+        sav_add_row.pack(fill='x', pady=(2,4))
+        self._menu_sav_new_var = StringVar()
+        sav_entry = Entry(sav_add_row, textvariable=self._menu_sav_new_var, width=18)
+        sav_entry.pack(side='left', padx=(0,6))
+        sav_add_btn = Button(sav_add_row, text="Ajouter", command=self._menu_add_savings_account, relief='flat', bg=theme['toggle_track_active'], fg=theme['toggle_thumb'])
+        sav_add_btn.pack(side='left')
+        sav_remove_btn = Button(sav_col, text="Supprimer sélection", command=self._menu_remove_savings_account, relief='flat', bg=theme['entry_bg'], fg=theme['entry_fg'])
+        sav_remove_btn.pack(anchor='e', pady=(0,4))
+
+        # Save button & feedback
+        self._menu_feedback_var = StringVar()
+        save_btn = Button(editor, text="Enregistrer", command=self._menu_save_accounts, relief='flat', bg=theme['toggle_track_active'], fg=theme['toggle_thumb'], padx=16, pady=6, font=(FONT_FAMILY, 13, 'bold'))
+        save_btn.pack(pady=(12,4))
+        feedback = Label(editor, textvariable=self._menu_feedback_var, font=(FONT_FAMILY, 11), bg=theme['bg'], fg=theme['fg'])
+        feedback.pack()
+
+        try: cur_entry.focus_set()
+        except Exception: pass
+        self._apply_menu_theme()
+
+    def _menu_add_current_account(self):
+        name = (getattr(self, '_menu_cur_new_var', StringVar()).get() or '').strip()
+        if not name or name in self.current_accounts:
+            return
+        # Clear previous save feedback on modification
+        try:
+            if hasattr(self, '_menu_feedback_var'):
+                self._menu_feedback_var.set('')
+        except Exception:
+            pass
+        self.current_accounts.append(name)
+        try: self._menu_cur_listbox.insert('end', name)
+        except Exception: pass
+        try: self._menu_cur_new_var.set('')
+        except Exception: pass
+
+    def _menu_remove_current_account(self):
+        try:
+            sel = self._menu_cur_listbox.curselection()
+            if not sel:
+                return
+            idx = sel[0]
+            acc = self._menu_cur_listbox.get(idx)
+            if acc in self.current_accounts:
+                self.current_accounts = [a for a in self.current_accounts if a != acc]
+            self._menu_cur_listbox.delete(idx)
+            try:
+                if hasattr(self, '_menu_feedback_var'):
+                    self._menu_feedback_var.set('')
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def _menu_add_savings_account(self):
+        name = (getattr(self, '_menu_sav_new_var', StringVar()).get() or '').strip()
+        if not name or name in self.savings_accounts:
+            return
+        try:
+            if hasattr(self, '_menu_feedback_var'):
+                self._menu_feedback_var.set('')
+        except Exception:
+            pass
+        self.savings_accounts.append(name)
+        try: self._menu_sav_listbox.insert('end', name)
+        except Exception: pass
+        try: self._menu_sav_new_var.set('')
+        except Exception: pass
+
+    def _menu_remove_savings_account(self):
+        try:
+            sel = self._menu_sav_listbox.curselection()
+            if not sel:
+                return
+            idx = sel[0]
+            acc = self._menu_sav_listbox.get(idx)
+            if acc in self.savings_accounts:
+                self.savings_accounts = [a for a in self.savings_accounts if a != acc]
+            self._menu_sav_listbox.delete(idx)
+            try:
+                if hasattr(self, '_menu_feedback_var'):
+                    self._menu_feedback_var.set('')
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def _menu_save_accounts(self):
+        if not self.current_accounts:
+            self.current_accounts = ['Compte Courant']
+        try:
+            self._save_settings()
+            if hasattr(self, '_menu_feedback_var'):
+                self._menu_feedback_var.set('Enregistré ✔')
+            try: self._inject_account_selectors()
+            except Exception: pass
+        except Exception:
+            if hasattr(self, '_menu_feedback_var'):
+                self._menu_feedback_var.set('Erreur sauvegarde')
 
     # ----- Combobox popdown theming helpers -----
     def _apply_combobox_list_theme(self, cb):
@@ -793,7 +995,8 @@ class App:
                         relief='flat',
                     )
                     try:
-                        lb.configure(font=self.entry_font)
+                        # Apply larger dropdown font for readability
+                        lb.configure(font=self.dropdown_font)
                     except Exception:
                         pass
                     try:
@@ -1042,8 +1245,8 @@ class App:
 
         self.entry_font.configure(size=new_size)
         self.label_font.configure(size=new_size)
-        # Slightly smaller font for compact header combobox
-        header_size = max(FONT_MIN_SIZE, new_size - 2)
+        # Header combobox font now matches entry font for uniform appearance
+        header_size = new_size
         self.header_cb_font.configure(size=header_size)
 
         for label in self.labels:
@@ -1069,21 +1272,17 @@ class App:
                 arrowsize = max(10, int(linespace * 0.80))
                 self.style.configure(self.combobox_style, padding=(6, pad_y), arrowsize=arrowsize)
                 # Even tighter padding/arrow for header compact style
-                h_linespace = max(1, int(self.header_cb_font.metrics('linespace')))
-                h_pad_y = max(1, int(h_linespace * 0.12))
-                h_arrowsize = max(8, int(h_linespace * 0.60))
-                self.style.configure(self.header_combobox_style, font=self.header_cb_font, padding=(4, h_pad_y), arrowsize=h_arrowsize)
+                # Remove special compact header style; use unified style for all dropdowns
+                self.style.configure(self.header_combobox_style, font=self.header_cb_font, padding=(6, pad_y), arrowsize=arrowsize)
             except Exception:
                 pass
             # Ensure other comboboxes follow the same font (account/savings selectors)
             try:
                 if hasattr(self, '_current_account_cb') and self._current_account_cb:
-                    # Use compact header font and reduce external vertical padding
+                    # Use unified header font (same as entry) and standard vertical padding
                     self._current_account_cb.configure(font=self.header_cb_font)
                     try:
-                        linespace = max(1, int(self.header_cb_font.metrics('linespace')))
-                        header_pady = max(1, int(linespace * 0.10))
-                        self._current_account_cb.pack_configure(pady=header_pady)
+                        self._current_account_cb.pack_configure(pady=pad_y)
                     except Exception:
                         pass
                 if hasattr(self, '_savings_account_cb') and self._savings_account_cb:
@@ -1092,7 +1291,15 @@ class App:
                 pass
             # Configure dropdown list (popdown) font via option database
             try:
-                self.root.option_add('*TCombobox*Listbox.font', self.entry_font)
+                # Increase dropdown list item font size for better readability
+                try:
+                    # Unify dropdown font size with entry font (remove enlargement)
+                    dd_size = self.entry_font.cget('size')
+                    if self.dropdown_font.cget('size') != dd_size:
+                        self.dropdown_font.configure(size=dd_size)
+                except Exception:
+                    pass
+                self.root.option_add('*TCombobox*Listbox.font', self.dropdown_font)
             except Exception:
                 pass
             self._clear_category_selection()
@@ -1561,6 +1768,11 @@ class App:
     def toggle_theme(self):
         self.is_dark_mode = not self.is_dark_mode
         self.apply_theme()
+        try:
+            # Ensure accounts editor (if visible) is re-themed immediately
+            self._refresh_accounts_editor_theme()
+        except Exception:
+            pass
         # Persist theme preference
         try:
             self._save_settings()
@@ -2841,7 +3053,7 @@ class App:
                     state='readonly',
                     height=4,  # fewer visible rows in dropdown
                     width=14,  # narrower field
-                    style=self.header_combobox_style,
+                    style=self.combobox_style,  # unified style
                 )
                 # Slightly reduced vertical padding to keep header compact
                 self._current_account_cb.pack(side='left', padx=(12,8), pady=2)
@@ -2852,7 +3064,7 @@ class App:
                     pass
             else:
                 # Ensure the dropdown height stays compact and values are refreshed
-                self._current_account_cb.configure(values=self.current_accounts, height=4, width=14, style=self.header_combobox_style)
+                self._current_account_cb.configure(values=self.current_accounts, height=4, width=14, style=self.combobox_style)
             if not self._current_account_var.get() and self.current_accounts:
                 self._current_account_var.set(self.current_accounts[0])
                 self.selected_current_account = self.current_accounts[0]
