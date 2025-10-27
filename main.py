@@ -481,8 +481,9 @@ class App:
         self.apply_theme()
         self._update_fonts()
         self._clear_category_selection()
-        self._render_transaction_toggle(LIGHT_THEME)
-        self._render_prelevement_toggle(LIGHT_THEME)
+        # Draw toggles using the active theme (handles dark on launch)
+        self._render_transaction_toggle(self.current_theme)
+        self._render_prelevement_toggle(self.current_theme)
         self._initialize_libelle_placeholder()
         self._initialize_montant_placeholder()
         # Inject account selectors after initial theme & fonts
