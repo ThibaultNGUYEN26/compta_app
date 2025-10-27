@@ -1,6 +1,10 @@
 from pathlib import Path
+import os
+import sys
+import subprocess
 import json
 from datetime import date, datetime
+import math
 import re
 import calendar as _calendar
 try:
@@ -113,9 +117,10 @@ class App:
 
         self.label_font = tkfont.Font(family=FONT_FAMILY, size=FONT_MIN_SIZE)
         self.entry_font = tkfont.Font(family=FONT_FAMILY, size=FONT_MIN_SIZE)
-        # Slightly larger font dedicated to combobox dropdown list items for better readability
+        # Slightly smaller font dedicated to combobox dropdown list items to keep the dropdown compact
         try:
-            self.dropdown_font = tkfont.Font(family=FONT_FAMILY, size=FONT_MIN_SIZE + 2)
+            # Start a bit smaller than entry font; will be kept ~2pt below dynamically
+            self.dropdown_font = tkfont.Font(family=FONT_FAMILY, size=max(FONT_MIN_SIZE - 2, 8))
         except Exception:
             # Fallback to entry font if creation fails
             self.dropdown_font = self.entry_font
@@ -130,6 +135,8 @@ class App:
         self.header_combobox_style = "Header.TCombobox"
         # Font for compact header combobox (initialized below in _update_fonts)
         self.header_cb_font = tkfont.Font(family=FONT_FAMILY, size=FONT_MIN_SIZE)
+        # Smaller font for path action buttons (Ouvrir / Changer)
+        self.small_button_font = tkfont.Font(family=FONT_FAMILY, size=max(FONT_MIN_SIZE - 4, 7))
 
         self.labels = []
         self.entries = []
@@ -429,20 +436,43 @@ class App:
             command=self._choose_compta_directory,
             relief="flat",
             borderwidth=0,
-            padx=12,
-            pady=4,
+            padx=8,
+            pady=3,
             bg=LIGHT_THEME["entry_bg"],
             fg=LIGHT_THEME["entry_fg"],
             activebackground=LIGHT_THEME["toggle_track"],
             activeforeground=LIGHT_THEME["toggle_thumb"],
-            font=self.label_font,
+            font=self.small_button_font,
             cursor="hand2"
         )
+
+        # New primary button to open the compta folder in the file explorer
+        self.open_path_button = Button(
+            self.path_container,
+            text="Ouvrir",
+            command=self._open_compta_directory,
+            relief="flat",
+            borderwidth=0,
+            padx=8,
+            pady=3,
+            bg=LIGHT_THEME["entry_bg"],
+            fg=LIGHT_THEME["entry_fg"],
+            activebackground=LIGHT_THEME["toggle_track"],
+            activeforeground=LIGHT_THEME["toggle_thumb"],
+            font=self.small_button_font,
+            cursor="hand2",
+        )
+        # Ensure both buttons have exactly the same visual width
+        try:
+            self._sync_path_buttons_width()
+        except Exception:
+            pass
 
         # Initial layout (will be refined in _update_path_layout)
         self.compta_path_hint.grid(row=0, column=0, columnspan=3, pady=(0,4), sticky="n")
         self.compta_path_label.grid(row=1, column=0, columnspan=2, sticky="ew")
-        self.change_path_button.grid(row=1, column=2, padx=(12, 4), sticky="e")
+        self.open_path_button.grid(row=1, column=2, padx=(12, 4), sticky="e")
+        self.change_path_button.grid(row=2, column=2, padx=(12, 4), sticky="e")
         self.path_container.grid_columnconfigure(0, weight=1)
         self.path_container.grid_columnconfigure(1, weight=0)
         self.path_container.grid_columnconfigure(2, weight=0)
@@ -481,6 +511,13 @@ class App:
             self.compta_path_label.configure(bg=theme["bg"], fg=theme["fg"])
         if hasattr(self, "change_path_button") and self.change_path_button is not None:
             self.change_path_button.configure(
+                bg=theme["entry_bg"],
+                fg=theme["entry_fg"],
+                activebackground=theme["toggle_track"],
+                activeforeground=theme["toggle_thumb"],
+            )
+        if hasattr(self, "open_path_button") and self.open_path_button is not None:
+            self.open_path_button.configure(
                 bg=theme["entry_bg"],
                 fg=theme["entry_fg"],
                 activebackground=theme["toggle_track"],
@@ -1258,7 +1295,18 @@ class App:
         if hasattr(self, 'add_button'):
             self.add_button.configure(font=self.label_font)
         if hasattr(self, 'change_path_button'):
-            self.change_path_button.configure(font=self.label_font)
+            try:
+                self.small_button_font.configure(size=max(7, new_size - 4))
+            except Exception:
+                pass
+            self.change_path_button.configure(font=self.small_button_font)
+        if hasattr(self, 'open_path_button'):
+            self.open_path_button.configure(font=self.small_button_font)
+        # Keep both path buttons with identical width when fonts change
+        try:
+            self._sync_path_buttons_width()
+        except Exception:
+            pass
 
         if self.category_combobox is not None:
             self.category_combobox.configure(font=self.entry_font)
@@ -1293,8 +1341,8 @@ class App:
             try:
                 # Increase dropdown list item font size for better readability
                 try:
-                    # Unify dropdown font size with entry font (remove enlargement)
-                    dd_size = self.entry_font.cget('size')
+                    # Keep dropdown list a bit smaller than the combobox field text
+                    dd_size = max(8, int(self.entry_font.cget('size')) - 4)
                     if self.dropdown_font.cget('size') != dd_size:
                         self.dropdown_font.configure(size=dd_size)
                 except Exception:
@@ -1350,7 +1398,10 @@ class App:
         try:
             self.compta_path_hint.grid_forget()
             self.compta_path_label.grid_forget()
-            self.change_path_button.grid_forget()
+            if hasattr(self, 'open_path_button'):
+                self.open_path_button.grid_forget()
+            if hasattr(self, 'change_path_button'):
+                self.change_path_button.grid_forget()
         except Exception:
             pass
         threshold = 900
@@ -1365,7 +1416,11 @@ class App:
             # Prevent wrapping; we'll show ellipsis when too narrow
             self.compta_path_label.configure(wraplength=0, anchor='center', justify='center')
             self.compta_path_label.grid(row=0, column=1, padx=(0,12), sticky='ew')
-            self.change_path_button.grid(row=0, column=2, padx=(0,6), sticky='e')
+            # Place Ouvrir as primary on the right, with Changer below it
+            if hasattr(self, 'open_path_button'):
+                self.open_path_button.grid(row=0, column=2, padx=(0,6), sticky='e')
+            if hasattr(self, 'change_path_button'):
+                self.change_path_button.grid(row=1, column=2, padx=(0,6), pady=(4,0), sticky='e')
             # Apply large spacing above the entire path container once (distance from add button)
             try:
                 self.path_container.grid_configure(pady=(100,0))
@@ -1381,7 +1436,11 @@ class App:
             # Prevent wrapping; we'll show ellipsis when too narrow
             self.compta_path_label.configure(wraplength=0, anchor='center', justify='center')
             self.compta_path_label.grid(row=1, column=0, columnspan=2, sticky='ew')
-            self.change_path_button.grid(row=1, column=2, padx=(12,4), sticky='e')
+            # Ouvrir on the right of the label row, Changer below it
+            if hasattr(self, 'open_path_button'):
+                self.open_path_button.grid(row=1, column=2, padx=(12,4), sticky='e')
+            if hasattr(self, 'change_path_button'):
+                self.change_path_button.grid(row=2, column=2, padx=(12,4), pady=(4,0), sticky='e')
             # Restore default smaller container spacing in stacked layout
             try:
                 self.path_container.grid_configure(pady=(14,0))
@@ -1449,6 +1508,38 @@ class App:
         # Avoid unnecessary updates
         if lbl.cget('text') != new_text:
             lbl.configure(text=new_text)
+
+    def _sync_path_buttons_width(self):
+        """Make 'Ouvrir' and 'Changer...' buttons have identical visual widths.
+
+        Width is set in "character units" based on the current label font so it stays consistent
+        as the UI scales. This should be called after creating the buttons and whenever fonts change.
+        """
+        try:
+            if not hasattr(self, 'open_path_button') or not hasattr(self, 'change_path_button'):
+                return
+            if self.open_path_button is None or self.change_path_button is None:
+                return
+            fnt = self.label_font
+            # Measure text widths
+            text_open = str(self.open_path_button.cget('text') or '')
+            text_change = str(self.change_path_button.cget('text') or '')
+            max_text_px = max(fnt.measure(text_open), fnt.measure(text_change))
+            # Account for horizontal padding (in pixels) set on the buttons
+            def _padx(btn):
+                try:
+                    return int(str(btn.cget('padx')))
+                except Exception:
+                    return 0
+            pad = max(_padx(self.open_path_button), _padx(self.change_path_button))
+            total_px = max_text_px + 2 * pad
+            # Convert to character units using width of '0' in this font
+            char_px = max(1, fnt.measure('0'))
+            width_chars = max(1, (total_px + char_px - 1) // char_px)
+            self.open_path_button.configure(width=width_chars)
+            self.change_path_button.configure(width=width_chars)
+        except Exception:
+            pass
 
     def _add_row(self):
         """Handle adding a new row with the current form data"""
@@ -1761,6 +1852,34 @@ class App:
                 print(f"Could not save settings: {e}")
         except Exception as e:
             print(f"Erreur lors de la mise à jour du chemin: {e}")
+
+    def _open_compta_directory(self):
+        """Open the compta base folder in the system file explorer.
+
+        Creates the folder if it doesn't exist yet so the explorer can open it.
+        """
+        try:
+            base = getattr(self, '_compta_base_dir', None) or self._compute_compta_base_dir()
+        except Exception:
+            base = Path(__file__).resolve().parent / 'dossier_compta'
+        # Ensure it exists (ok to create on explicit open action)
+        try:
+            Path(base).mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            print(f"Impossible de créer le dossier compta: {e}")
+        # Open in explorer/finder/xdg
+        try:
+            if os.name == 'nt':
+                os.startfile(str(base))
+            elif sys.platform == 'darwin':
+                subprocess.Popen(['open', str(base)])
+            else:
+                subprocess.Popen(['xdg-open', str(base)])
+        except Exception as e:
+            try:
+                messagebox.showerror("Ouvrir le dossier", f"Impossible d'ouvrir:\n{base}\n\n{e}")
+            except Exception:
+                print(f"Impossible d'ouvrir le dossier: {base} -> {e}")
     def toggle_theme(self):
         self.is_dark_mode = not self.is_dark_mode
         self.apply_theme()
