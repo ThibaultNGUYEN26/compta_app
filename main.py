@@ -846,7 +846,33 @@ class App:
 
     def _close_menu(self):
         if self.menu_overlay and self.menu_overlay.winfo_exists():
-            self.menu_overlay.place_forget()
+            # Ask user to save unsaved account changes
+            try:
+                if getattr(self, '_accounts_editor_frame', None) and getattr(self, '_accounts_editor_dirty', False) and not getattr(self, '_accounts_editor_saved', False):
+                    resp = messagebox.askyesno("Enregistrer les modifications ?",
+                                               "Vous avez des modifications non enregistrées aux comptes. Voulez-vous les enregistrer avant de fermer ?")
+                    if resp:
+                        try:
+                            self._menu_save_accounts()
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            self.current_accounts = list(getattr(self, '_accounts_original_current', self.current_accounts))
+                            self.savings_accounts = list(getattr(self, '_accounts_original_savings', self.savings_accounts))
+                            self._refresh_account_selectors()
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+            try:
+                self.menu_overlay.place_forget()
+                self.menu_overlay.destroy()
+            except Exception:
+                pass
+            self.menu_overlay = None
+            self._accounts_editor_dirty = False
+            self._accounts_editor_saved = False
 
     def _set_theme(self, dark: bool):
         self.is_dark_mode = bool(dark)
@@ -883,6 +909,11 @@ class App:
         editor = Frame(self.menu_center_frame, bg=theme['bg'])
         editor.pack(pady=(16,0), fill='both', expand=True)
         self._accounts_editor_frame = editor
+        # Snapshot original account state for revert logic
+        self._accounts_original_current = list(self.current_accounts)
+        self._accounts_original_savings = list(self.savings_accounts)
+        self._accounts_editor_dirty = False
+        self._accounts_editor_saved = False
 
         title = Label(editor, text="Gestion des Comptes", font=(FONT_FAMILY, 16, 'bold'), bg=theme['bg'], fg=theme['fg'])
         title.pack(pady=(0,8))
@@ -956,6 +987,7 @@ class App:
         except Exception: pass
         try: self._menu_cur_new_var.set('')
         except Exception: pass
+        self._accounts_editor_dirty = True
 
     def _menu_remove_current_account(self):
         try:
@@ -974,6 +1006,8 @@ class App:
                 pass
         except Exception:
             pass
+        else:
+            self._accounts_editor_dirty = True
 
     def _menu_add_savings_account(self):
         name = (getattr(self, '_menu_sav_new_var', StringVar()).get() or '').strip()
@@ -989,6 +1023,7 @@ class App:
         except Exception: pass
         try: self._menu_sav_new_var.set('')
         except Exception: pass
+        self._accounts_editor_dirty = True
 
     def _menu_remove_savings_account(self):
         try:
@@ -1007,6 +1042,8 @@ class App:
                 pass
         except Exception:
             pass
+        else:
+            self._accounts_editor_dirty = True
 
     def _menu_save_accounts(self):
         if not self.current_accounts:
@@ -1017,6 +1054,8 @@ class App:
                 self._menu_feedback_var.set('Enregistré ✔')
             try: self._inject_account_selectors()
             except Exception: pass
+            self._accounts_editor_saved = True
+            self._accounts_editor_dirty = False
         except Exception:
             if hasattr(self, '_menu_feedback_var'):
                 self._menu_feedback_var.set('Erreur sauvegarde')
@@ -3240,6 +3279,23 @@ class App:
                 self._save_settings()
             except Exception:
                 pass
+
+    def _refresh_account_selectors(self):
+        """Refresh account selector comboboxes in main UI (used after revert/save)."""
+        try:
+            if hasattr(self, '_current_account_cb') and self._current_account_cb:
+                self._current_account_cb.configure(values=self.current_accounts)
+                if self.selected_current_account not in self.current_accounts:
+                    self.selected_current_account = self.current_accounts[0] if self.current_accounts else None
+                self._current_account_var.set(self.selected_current_account or '')
+            if hasattr(self, '_savings_account_cb') and self._savings_account_cb:
+                self._savings_account_cb.configure(values=self.savings_accounts)
+                if self.selected_savings_account not in self.savings_accounts:
+                    self.selected_savings_account = self.savings_accounts[0] if self.savings_accounts else None
+                self._savings_account_var.set(self.selected_savings_account or '')
+            self._evaluate_savings_selector_visibility()
+        except Exception:
+            pass
 
 if __name__ == "__main__":
     root = Tk()
