@@ -201,7 +201,8 @@ class App:
             cursor="hand2",
             font=(FONT_FAMILY, 16, "bold"),
         )
-        self.menu_button.pack(side="right", padx=12, pady=8)
+        # Increased padding to distance the menu button from window borders
+        self.menu_button.pack(side="right", padx=24, pady=14)
 
         # Prepare (hidden) overlay menu; built lazily on first open
         self.menu_overlay = None
@@ -923,16 +924,18 @@ class App:
 
         # Current accounts column
         cur_col = Frame(cols, bg=theme['bg'])
-        cur_col.pack(side='left', fill='both', expand=True, padx=(0,8))
+        cur_col.pack(side='left', fill='both', expand=True, padx=(0,20))
         cur_lbl = Label(cur_col, text="Comptes Courants", font=(FONT_FAMILY, 13, 'bold'), bg=theme['bg'], fg=theme['fg'])
         cur_lbl.pack(anchor='w')
         self._menu_cur_listbox = Listbox(cur_col, height=6, activestyle='none')
-        self._menu_cur_listbox.pack(fill='x', pady=4)
+        self._menu_cur_listbox.pack(fill='x', padx=12, pady=10)
         for acc in self.current_accounts:
-            try: self._menu_cur_listbox.insert('end', acc)
-            except Exception: pass
+            try:
+                self._menu_cur_listbox.insert('end', acc)
+            except Exception:
+                pass
         cur_add_row = Frame(cur_col, bg=theme['bg'])
-        cur_add_row.pack(fill='x', pady=(2,4))
+        cur_add_row.pack(fill='x', padx=12, pady=(6,8))
         self._menu_cur_new_var = StringVar()
         cur_entry = Entry(cur_add_row, textvariable=self._menu_cur_new_var, width=18)
         cur_entry.pack(side='left', padx=(0,6))
@@ -943,16 +946,18 @@ class App:
 
         # Savings accounts column
         sav_col = Frame(cols, bg=theme['bg'])
-        sav_col.pack(side='left', fill='both', expand=True, padx=(8,0))
+        sav_col.pack(side='left', fill='both', expand=True, padx=(20,0))
         sav_lbl = Label(sav_col, text="Comptes Épargne", font=(FONT_FAMILY, 13, 'bold'), bg=theme['bg'], fg=theme['fg'])
         sav_lbl.pack(anchor='w')
         self._menu_sav_listbox = Listbox(sav_col, height=6, activestyle='none')
-        self._menu_sav_listbox.pack(fill='x', pady=4)
+        self._menu_sav_listbox.pack(fill='x', padx=12, pady=10)
         for acc in self.savings_accounts:
-            try: self._menu_sav_listbox.insert('end', acc)
-            except Exception: pass
+            try:
+                self._menu_sav_listbox.insert('end', acc)
+            except Exception:
+                pass
         sav_add_row = Frame(sav_col, bg=theme['bg'])
-        sav_add_row.pack(fill='x', pady=(2,4))
+        sav_add_row.pack(fill='x', padx=12, pady=(6,8))
         self._menu_sav_new_var = StringVar()
         sav_entry = Entry(sav_add_row, textvariable=self._menu_sav_new_var, width=18)
         sav_entry.pack(side='left', padx=(0,6))
