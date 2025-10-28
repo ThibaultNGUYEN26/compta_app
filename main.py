@@ -97,8 +97,30 @@ class App:
 
         width_size = self.root.winfo_screenwidth()
         height_size = self.root.winfo_screenheight()
-        self.root.geometry(f"{width_size // 2}x{height_size // 2}")
+        # Initial window size set to half of the screen dimensions
+        win_w = width_size // 2
+        win_h = height_size // 2
+        # Compute centered position (accounting for full screen size)
+        pos_x = (width_size - win_w) // 2
+        pos_y = (height_size - win_h) // 2
+        self.root.geometry(f"{win_w}x{win_h}+{pos_x}+{pos_y}")
         self.root.minsize(400, 300)
+
+        # Helper to re-center window if needed later (not auto-called to avoid disrupting user)
+        def _center_root_once():
+            try:
+                self.root.update_idletasks()
+                cur_w = self.root.winfo_width()
+                cur_h = self.root.winfo_height()
+                sw = self.root.winfo_screenwidth()
+                sh = self.root.winfo_screenheight()
+                cx = (sw - cur_w) // 2
+                cy = (sh - cur_h) // 2
+                self.root.geometry(f"{cur_w}x{cur_h}+{cx}+{cy}")
+            except Exception:
+                pass
+        # Store for potential future use
+        self._center_root_once = _center_root_once
 
         asset_dir = Path(__file__).resolve().parent / "src"
         dark_icon = PhotoImage(master=self.root, file=str(asset_dir / "dark_mode_icon.png"))
