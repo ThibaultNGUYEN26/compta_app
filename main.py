@@ -2234,11 +2234,15 @@ class App:
         for label, val in stats:
             ws.cell(row=row, column=8, value=label)
             v_cell = ws.cell(row=row, column=9, value=val)
-            if isinstance(val, (int, float)) and (label.startswith("Solde") or label.startswith("Montant")):
-                try:
-                    v_cell.number_format = "#,##0.00 [$€-fr-FR]"
-                except Exception:
-                    pass
+            # Apply euro formatting only to monetary metrics (Solde/Montant). Counts (Nombre ...) stay as plain integers.
+            try:
+                if isinstance(val, (int, float)):
+                    if label.startswith("Solde") or label.startswith("Montant"):
+                        v_cell.number_format = "#,##0.00 [$€-fr-FR]"
+                    elif label.startswith("Nombre"):
+                        v_cell.number_format = "0"  # integer count formatting
+            except Exception:
+                pass
             row += 1
 
         # Auto-adjust column widths (simple heuristic)
