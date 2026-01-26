@@ -1,0 +1,139 @@
+.account-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.account-subtitle {
+  margin: 0;
+  color: var(--muted);
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.account-block {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.account-block h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.account-block ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.account-block li {
+  background: rgba(37, 99, 235, 0.08);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.account-item {
+  min-height: 38px;
+}
+
+.account-item span {
+  flex: 1 1 auto;
+  min-width: 120px;
+}
+
+.account-edit {
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  background: #ffffff;
+  color: #1d4ed8;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.account-edit-input {
+  flex: 1 1 160px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  padding: 6px 10px;
+  font: inherit;
+  background: #ffffff;
+  min-width: 140px;
+}
+
+.account-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.account-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.account-form input {
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.account-form button {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.account-actions button {
+  border-radius: 999px;
+  padding: 6px 12px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.account-actions .account-cancel {
+  background: rgba(15, 23, 42, 0.08);
+  color: var(--ink);
+  border: none;
+}
+
+.account-actions .account-delete {
+  background: rgba(220, 38, 38, 0.16);
+  color: #b91c1c;
+  border: none;
+  padding: 6px 12px;
+  font-weight: 600;
+}

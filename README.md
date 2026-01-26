@@ -1,1 +1,0 @@
-# compta_app
