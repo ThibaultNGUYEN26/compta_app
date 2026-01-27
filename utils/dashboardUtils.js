@@ -47,6 +47,12 @@ export const filterByScope = (transactions, scopeType, scopeName) => {
   
   return transactions.filter((t) => {
     if (scopeType === "current") {
+      if (!scopeName) {
+        if (t.accountType) {
+          return t.accountType !== "saving";
+        }
+        return t.category !== "Saving";
+      }
       return t.currentAccount === scopeName;
     }
     if (scopeType === "saving") {
@@ -144,6 +150,7 @@ export const computeMonthlySeries = (transactions, year) => {
     month: i,
     realIncome: 0,
     realOutcome: 0,
+    realPrelevement: 0,
     realNet: 0,
   }));
 
@@ -159,6 +166,9 @@ export const computeMonthlySeries = (transactions, year) => {
       months[monthIndex].realIncome += amount;
     } else if (isRealOutcome(t)) {
       months[monthIndex].realOutcome += amount;
+      if (t.isPrelevement) {
+        months[monthIndex].realPrelevement += amount;
+      }
     }
   }
 

@@ -10,7 +10,6 @@ import {
   filterByDateRange,
   filterByScope,
   computeKpis,
-  computeMonthlySeries,
   computeCategoryBreakdown,
   computeSavingsBySavingAccount,
   computeDailyExpenses,
@@ -103,7 +102,7 @@ export default function StatsPage({ transactions }) {
   }, [scopeOptions, scopeValue]);
 
   const parseScope = (value) => {
-    if (value === "all") return { type: "all", name: "" };
+    if (value === "all") return { type: "current", name: "" };
     const [type, name] = value.split("::");
     return { type: type || "all", name: name || "" };
   };
@@ -119,10 +118,6 @@ export default function StatsPage({ transactions }) {
   const kpis = useMemo(() => {
     return computeKpis(filteredTransactions, accountLists);
   }, [filteredTransactions, accountLists]);
-
-  const monthlySeries = useMemo(() => {
-    return computeMonthlySeries(transactions, selectedYear);
-  }, [transactions, selectedYear]);
 
   const categoryBreakdown = useMemo(() => {
     return computeCategoryBreakdown(filteredTransactions);
@@ -154,7 +149,7 @@ export default function StatsPage({ transactions }) {
 
         <div className="stats-charts-grid">
           <div className="stats-chart-card">
-            <MonthlyIncomeOutcome monthlySeries={monthlySeries} />
+            <MonthlyIncomeOutcome transactions={filteredTransactions} />
           </div>
 
           <div className="stats-chart-card">

@@ -4,72 +4,83 @@
   gap: 16px;
 }
 
-.monthly-chart {
-  display: flex;
-  flex-direction: column;
+.monthly-donut {
+  display: grid;
+  place-items: center;
   gap: 16px;
-}
-
-.monthly-bars {
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
-  height: 200px;
   padding: 16px;
   background: rgba(255, 255, 255, 0.6);
   border-radius: 12px;
+  position: relative;
 }
 
-.monthly-bar-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
+.donut-chart {
+  width: 180px;
+  height: 180px;
+  transform: rotate(-90deg);
 }
 
-.monthly-bar-pair {
-  flex: 1;
-  width: 100%;
-  display: flex;
-  gap: 2px;
-  align-items: flex-end;
-  justify-content: center;
+.donut-track {
+  fill: none;
+  stroke: rgba(15, 23, 42, 0.08);
+  stroke-width: 12;
 }
 
-.monthly-bar {
-  flex: 1;
-  min-width: 8px;
-  max-width: 24px;
-  border-radius: 4px 4px 0 0;
-  transition: opacity 0.2s;
+.donut-segment {
+  fill: none;
+  stroke-width: 12;
+  stroke-linecap: butt;
   cursor: pointer;
 }
 
-.monthly-bar:hover {
-  opacity: 0.8;
+.donut-segment.income {
+  stroke: #16a34a;
 }
 
-.monthly-bar-income {
-  background: linear-gradient(180deg, #16a34a 0%, #22c55e 100%);
+.donut-segment.expense {
+  stroke: #dc2626;
 }
 
-.monthly-bar-outcome {
-  background: linear-gradient(180deg, #dc2626 0%, #ef4444 100%);
+.donut-segment.prelevement {
+  stroke: #f59e0b;
 }
 
-.monthly-label {
-  font-size: 0.7rem;
-  color: var(--muted);
+.donut-center-label {
+  font-size: 0.65rem;
   font-weight: 600;
+  fill: var(--muted);
   text-transform: uppercase;
+  letter-spacing: 0.12em;
+  transform: rotate(90deg);
+}
+
+.donut-center-value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  fill: var(--ink);
+  transform: rotate(90deg);
 }
 
 .monthly-legend {
   display: flex;
-  gap: 20px;
+  gap: 14px;
   justify-content: center;
-  padding: 12px;
+  flex-wrap: wrap;
+}
+
+.donut-tooltip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 10px));
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.2);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 2;
 }
 
 .legend-item {
@@ -91,17 +102,10 @@
   background: #16a34a;
 }
 
-.legend-dot-outcome {
+.legend-dot-expense {
   background: #dc2626;
 }
 
-@media (max-width: 768px) {
-  .monthly-bars {
-    gap: 4px;
-  }
-
-  .monthly-bar {
-    min-width: 6px;
-    max-width: 16px;
-  }
+.legend-dot-prelevement {
+  background: #f59e0b;
 }

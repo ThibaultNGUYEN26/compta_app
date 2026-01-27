@@ -164,7 +164,7 @@
   font-weight: 600;
   font-family: "Space Grotesk", sans-serif;
   white-space: nowrap;
-  text-align: right;
+  text-align: left;
 }
 
 .drilldown-amount.income {
