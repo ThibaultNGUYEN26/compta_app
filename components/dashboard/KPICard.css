@@ -1,0 +1,82 @@
+.kpi-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 140px;
+  box-shadow: 0 8px 20px -12px rgba(15, 23, 42, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -12px rgba(15, 23, 42, 0.4);
+}
+
+.kpi-label {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--ink);
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.kpi-metrics {
+  display: flex;
+  gap: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.kpi-count {
+  color: var(--muted);
+}
+
+.kpi-percentage {
+  color: var(--accent);
+}
+
+.kpi-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: auto;
+}
+
+.kpi-card-income .kpi-value {
+  color: var(--money);
+}
+
+.kpi-card-expense .kpi-value {
+  color: #dc2626;
+}
+
+.kpi-card-positive .kpi-value {
+  color: var(--money);
+}
+
+.kpi-card-negative .kpi-value {
+  color: #dc2626;
+}
+
+.kpi-card-prelevement .kpi-value {
+  color: #d97706;
+}
+
+.kpi-card-balance {
+  background: linear-gradient(135deg, #dbeafe 0%, #f0f9ff 100%);
+  border-color: rgba(37, 99, 235, 0.2);
+}
+
+.kpi-card-balance .kpi-value {
+  color: var(--accent-strong);
+}

@@ -4,6 +4,7 @@ import TransactionList from "./components/TransactionList";
 import ArchivePage from "./components/ArchivePage";
 import StatsPage from "./components/StatsPage";
 import AccountManager from "./components/AccountManager";
+import Navigation from "./components/Navigation";
 
 export default function App() {
   const [transactions, setTransactions] = useState([]);
@@ -14,6 +15,9 @@ export default function App() {
   const [savingAccounts, setSavingAccounts] = useState([]);
   const [showAccounts, setShowAccounts] = useState(false);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
+  const [selectedCurrentAccount, setSelectedCurrentAccount] = useState(
+    "Current account"
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +36,14 @@ export default function App() {
           ? settings.accounts.saving
           : []
       );
+      setSelectedCurrentAccount((prev) => {
+        const nextCurrent =
+          Array.isArray(settings.accounts.current) &&
+          settings.accounts.current.length
+            ? settings.accounts.current
+            : ["Current account"];
+        return nextCurrent.includes(prev) ? prev : nextCurrent[0];
+      });
       setAccountsLoaded(true);
     };
     loadSettings();
@@ -54,6 +66,13 @@ export default function App() {
     if (!accountsLoaded) return;
     persistAccounts(currentAccounts, savingAccounts);
   }, [accountsLoaded, currentAccounts, savingAccounts]);
+
+  useEffect(() => {
+    if (!currentAccounts.length) return;
+    setSelectedCurrentAccount((prev) =>
+      currentAccounts.includes(prev) ? prev : currentAccounts[0]
+    );
+  }, [currentAccounts]);
 
   useEffect(() => {
     let cancelled = false;
@@ -190,34 +209,12 @@ export default function App() {
   return (
     <div className={`app${view === "stats" ? " is-stats" : ""}`}>
       <header className="app-header">
-        <div>
+        <div className="app-header-brand">
           <p className="app-eyebrow">Personal finance</p>
           <h1 className="app-title">Compta</h1>
         </div>
         <div className="app-actions">
-          <div className="app-nav">
-            <button
-              type="button"
-              className={`nav-button ${view === "home" ? "is-active" : ""}`}
-              onClick={() => setView("home")}
-          >
-            Dashboard
-          </button>
-          <button
-            type="button"
-            className={`nav-button ${view === "archive" ? "is-active" : ""}`}
-            onClick={() => setView("archive")}
-          >
-            Archive
-          </button>
-          <button
-            type="button"
-            className={`nav-button ${view === "stats" ? "is-active" : ""}`}
-            onClick={() => setView("stats")}
-            >
-              Stats
-            </button>
-          </div>
+          <Navigation currentView={view} onViewChange={setView} />
           <button
             type="button"
             className="settings-button"
@@ -258,10 +255,28 @@ export default function App() {
         <main className="app-grid">
           <section className="panel panel-form">
             <h2 className="panel-title">New transaction</h2>
+            <div className="panel-account-row">
+              <label className="panel-account-select">
+                <span>Account</span>
+                <select
+                  value={selectedCurrentAccount}
+                  onChange={(e) => setSelectedCurrentAccount(e.target.value)}
+                >
+                  {(currentAccounts.length ? currentAccounts : ["Current account"]).map(
+                    (account) => (
+                      <option key={account} value={account}>
+                        {account}
+                      </option>
+                    )
+                  )}
+                </select>
+              </label>
+            </div>
             <TransactionForm
               onSubmit={handleAdd}
               currentAccounts={currentAccounts}
               savingAccounts={savingAccounts}
+              selectedCurrentAccount={selectedCurrentAccount}
             />
           </section>
           <section className="panel panel-list">

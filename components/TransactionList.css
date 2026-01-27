@@ -6,6 +6,12 @@
   gap: 8px;
 }
 
+.transaction-list-empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 20px;
+}
+
 .transaction-item {
   background: #ffffff;
   border-radius: 14px;
@@ -13,6 +19,19 @@
   padding: 10px 12px;
   display: grid;
   gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.transaction-item:hover {
+  border-color: rgba(37, 99, 235, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.transaction-item-selected {
+  background: rgba(37, 99, 235, 0.08);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
 .transaction-main {
@@ -58,6 +77,14 @@
   padding: 4px 10px;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.2);
+  color: #334155;
+  font-weight: 600;
+}
+
+.transaction-account {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(71, 85, 105, 0.12);
   color: #334155;
   font-weight: 600;
 }
@@ -293,6 +320,11 @@
 .edit-actions button:last-child {
   background: var(--accent);
   color: #ffffff;
+}
+
+.edit-actions .edit-delete {
+  background: rgba(220, 38, 38, 0.16);
+  color: #b91c1c;
 }
 
 .edit-actions .edit-delete {

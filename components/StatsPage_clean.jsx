@@ -5,7 +5,6 @@ import MonthlyIncomeOutcome from "./dashboard/MonthlyIncomeOutcome";
 import CategoryBreakdown from "./dashboard/CategoryBreakdown";
 import SavingsAnalysis from "./dashboard/SavingsAnalysis";
 import TransactionDrilldown from "./dashboard/TransactionDrilldown";
-import DailyExpenseChart from "./dashboard/DailyExpenseChart";
 import {
   filterByDateRange,
   filterByScope,
@@ -13,7 +12,6 @@ import {
   computeMonthlySeries,
   computeCategoryBreakdown,
   computeSavingsBySavingAccount,
-  computeDailyExpenses,
 } from "../utils/dashboardUtils";
 import "./StatsPage.css";
 
@@ -89,9 +87,12 @@ export default function StatsPage({ transactions }) {
   }, [selectedYear, years]);
 
   const scopeOptions = useMemo(() => {
-    const options = [{ value: "all", label: "All current accounts" }];
+    const options = [{ value: "all", label: "All accounts" }];
     accountLists.current.forEach((name) => {
       options.push({ value: `current::${name}`, label: `Current: ${name}` });
+    });
+    accountLists.saving.forEach((name) => {
+      options.push({ value: `saving::${name}`, label: `Saving: ${name}` });
     });
     return options;
   }, [accountLists]);
@@ -132,10 +133,6 @@ export default function StatsPage({ transactions }) {
     return computeSavingsBySavingAccount(filteredTransactions);
   }, [filteredTransactions]);
 
-  const dailyExpenses = useMemo(() => {
-    return computeDailyExpenses(filteredTransactions);
-  }, [filteredTransactions]);
-
   return (
     <div className="stats-page">
       <DashboardControls
@@ -167,14 +164,6 @@ export default function StatsPage({ transactions }) {
           <div className="stats-chart-card">
             <SavingsAnalysis savingsByAccount={savingsByAccount} />
           </div>
-        </div>
-
-        <div className="stats-full-width">
-          <DailyExpenseChart 
-            dailyExpenses={dailyExpenses}
-            selectedYear={selectedYear}
-            selectedMonth={selectedMonth}
-          />
         </div>
 
         <div className="stats-drilldown">

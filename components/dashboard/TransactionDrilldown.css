@@ -1,0 +1,232 @@
+.transaction-drilldown {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.drilldown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drilldown-count {
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.drilldown-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+
+.drilldown-search {
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: #ffffff;
+  width: 100%;
+}
+
+.drilldown-search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.drilldown-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.drilldown-filter-row select {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.drilldown-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.drilldown-checkbox:hover {
+  border-color: var(--line);
+}
+
+.drilldown-checkbox input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.drilldown-clear {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-left: auto;
+}
+
+.drilldown-clear:hover {
+  background: rgba(220, 38, 38, 0.2);
+}
+
+.drilldown-table-wrapper {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.drilldown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.drilldown-table thead {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.drilldown-table th {
+  text-align: left;
+  padding: 12px 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+
+.drilldown-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.drilldown-table tbody tr:hover {
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.drilldown-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.drilldown-date {
+  color: var(--muted);
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.drilldown-name {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.drilldown-account {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.drilldown-category {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.drilldown-amount {
+  font-weight: 600;
+  font-family: "Space Grotesk", sans-serif;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.drilldown-amount.income {
+  color: var(--money);
+}
+
+.drilldown-amount.expense {
+  color: #dc2626;
+}
+
+.drilldown-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tag-prelevement {
+  background: rgba(234, 179, 8, 0.15);
+  color: #a16207;
+}
+
+.tag-saving {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.drilldown-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+  .drilldown-table {
+    font-size: 0.85rem;
+  }
+
+  .drilldown-table th,
+  .drilldown-table td {
+    padding: 10px;
+  }
+
+  .drilldown-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .drilldown-filter-row select,
+  .drilldown-checkbox {
+    width: 100%;
+  }
+
+  .drilldown-clear {
+    margin-left: 0;
+  }
+}

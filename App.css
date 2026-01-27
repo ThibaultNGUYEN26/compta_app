@@ -52,31 +52,6 @@ body {
   margin-left: auto;
 }
 
-.app-nav {
-  display: inline-flex;
-  gap: 10px;
-  background: rgba(15, 23, 42, 0.04);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  padding: 6px;
-  border-radius: 999px;
-}
-
-.nav-button {
-  border: none;
-  background: transparent;
-  padding: 8px 16px;
-  border-radius: 999px;
-  font-weight: 600;
-  color: var(--muted);
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-
-.nav-button.is-active {
-  background: var(--accent);
-  color: #ffffff;
-}
-
 .settings-button {
   border: 1px solid rgba(15, 23, 42, 0.12);
   background: #ffffff;
@@ -153,13 +128,6 @@ body {
   margin: 0;
 }
 
-.app-subtitle {
-  margin: 8px 0 0;
-  max-width: 420px;
-  color: var(--muted);
-  font-size: 1rem;
-}
-
 .app-grid {
   display: grid;
   grid-template-columns: minmax(240px, 340px) minmax(320px, 1fr);
@@ -216,6 +184,41 @@ body {
   font-size: 1.2rem;
 }
 
+.panel-account-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.panel-account-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.panel-account-select span {
+  white-space: nowrap;
+}
+
+.panel-account-select select {
+  flex: 1;
+  width: auto;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: #ffffff;
+  color: var(--ink);
+}
+
 .panel::before {
   content: "";
   position: absolute;
@@ -229,13 +232,16 @@ body {
   border-top-color: rgba(22, 163, 74, 0.45);
 }
 
-.panel-accounts::before {
-  border-top-color: rgba(59, 130, 246, 0.45);
+@media (max-width: 1200px) {
+  .app-grid {
+    grid-template-columns: minmax(220px, 320px) minmax(320px, 1fr);
+    gap: 22px;
+  }
 }
 
 @media (max-width: 900px) {
   .app {
-    padding: 28px 5vw 44px;
+    padding: 24px 4.5vw 40px;
   }
 
   .app-grid {
@@ -246,34 +252,13 @@ body {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
+    margin-bottom: 24px;
   }
 
   .app-actions {
     width: 100%;
     justify-content: space-between;
     gap: 10px;
-  }
-
-}
-
-@media (max-width: 1200px) {
-  .app-grid {
-    grid-template-columns: minmax(220px, 320px) minmax(320px, 1fr);
-    gap: 22px;
-  }
-}
-
-@media (max-width: 860px) {
-  .app {
-    padding: 24px 4.5vw 40px;
-  }
-
-  .app-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .app-header {
-    margin-bottom: 24px;
   }
 }
 
@@ -289,4 +274,7 @@ body {
   .panel {
     border-radius: 16px;
   }
+}
+.app-grid {
+  margin-top: 18px;
 }

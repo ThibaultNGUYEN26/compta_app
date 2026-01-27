@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import "./DashboardStats.css";
+import "./MonthlyStats.css";
 
 const formatCurrency = (value) =>
   `${Number.isFinite(value) ? value.toFixed(2) : "0.00"} EUR`;
@@ -23,7 +23,7 @@ const getReferenceDate = (items, year, month) => {
   return getLatestDate(items);
 };
 
-export default function DashboardStats({ transactions, selectedYear, selectedMonth }) {
+export default function MonthlyStats({ transactions, selectedYear, selectedMonth }) {
   const referenceDate = useMemo(
     () => getReferenceDate(transactions, selectedYear, selectedMonth),
     [selectedMonth, selectedYear, transactions]
@@ -71,9 +71,9 @@ export default function DashboardStats({ transactions, selectedYear, selectedMon
   });
 
   return (
-    <div className="dashboard-stats">
-      <div className="dashboard-cards">
-        <div className="dashboard-card">
+    <div className="monthly-stats">
+      <div className="monthly-cards">
+        <div className="monthly-card">
           <span className="card-label">Month balance</span>
           <strong
             className={`card-value ${
@@ -84,21 +84,21 @@ export default function DashboardStats({ transactions, selectedYear, selectedMon
           </strong>
           <span className="card-meta">Income minus outcome</span>
         </div>
-        <div className="dashboard-card">
+        <div className="monthly-card">
           <span className="card-label">Month income</span>
           <strong className="card-value is-income">
             {formatCurrency(monthly.income)}
           </strong>
           <span className="card-meta">All income for {monthLabel}</span>
         </div>
-        <div className="dashboard-card">
+        <div className="monthly-card">
           <span className="card-label">Month outcome</span>
           <strong className="card-value is-expense">
             {formatCurrency(monthly.outcome)}
           </strong>
           <span className="card-meta">Expenses for {monthLabel}</span>
         </div>
-        <div className="dashboard-card">
+        <div className="monthly-card">
           <span className="card-label">Transactions</span>
           <strong className="card-value">{monthly.count}</strong>
           <span className="card-meta">Total for {monthLabel}</span>

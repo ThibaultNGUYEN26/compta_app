@@ -1,5 +1,6 @@
 __pycache__/
-data/
+data/settings.json
+data/Compta_*.json
 
 # =========================
 # Node / Electron
@@ -9,6 +10,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+package-lock.json
 
 # =========================
 # Build outputs

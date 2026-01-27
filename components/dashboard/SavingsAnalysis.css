@@ -1,0 +1,109 @@
+.savings-analysis {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.savings-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.savings-account-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+
+.savings-account-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.savings-account-name {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.savings-net-change {
+  font-weight: 700;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.1rem;
+}
+
+.savings-net-change.positive {
+  color: var(--money);
+}
+
+.savings-net-change.negative {
+  color: #dc2626;
+}
+
+.savings-bars-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.savings-bar-row {
+  display: grid;
+  grid-template-columns: 100px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.savings-bar-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.savings-bar-track {
+  height: 24px;
+  background: rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.savings-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.savings-bar-deposit {
+  background: linear-gradient(90deg, #16a34a 0%, #22c55e 100%);
+}
+
+.savings-bar-withdrawal {
+  background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%);
+}
+
+.savings-bar-value {
+  font-weight: 600;
+  font-family: "Space Grotesk", sans-serif;
+  color: var(--ink);
+  font-size: 0.9rem;
+  min-width: 100px;
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .savings-bar-row {
+    grid-template-columns: 80px 1fr;
+    gap: 8px;
+  }
+
+  .savings-bar-value {
+    grid-column: 1 / -1;
+    text-align: left;
+    font-size: 0.85rem;
+  }
+}

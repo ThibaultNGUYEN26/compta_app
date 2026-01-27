@@ -1,0 +1,94 @@
+.category-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chart-title {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.1rem;
+  margin: 0;
+  color: var(--ink);
+}
+
+.chart-empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 40px 20px;
+  font-size: 0.95rem;
+}
+
+.category-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.category-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.category-bar-item:hover {
+  transform: translateX(4px);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.category-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.category-name {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.category-values {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.category-amount {
+  font-weight: 600;
+  color: #dc2626;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1rem;
+}
+
+.category-percentage {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 0.9rem;
+  min-width: 50px;
+  text-align: right;
+}
+
+.category-bar-track {
+  height: 8px;
+  background: rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.category-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.category-count {
+  font-size: 0.8rem;
+  color: var(--muted);
+}

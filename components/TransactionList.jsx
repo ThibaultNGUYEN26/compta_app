@@ -2,10 +2,17 @@ import React, { useMemo, useState } from "react";
 import "./TransactionList.css";
 
 const categories = [
-  "Food",
+  "Restaurant",
+  "Groceries",
   "Transport",
+  "Shopping",
   "Bills",
+  "Utilities",
+  "Housing",
+  "Health",
   "Entertainment",
+  "Travel",
+  "Subscriptions",
   "Other",
   "Saving",
 ];
@@ -19,6 +26,7 @@ export default function TransactionList({
   savingAccounts = [],
 }) {
   const [editingId, setEditingId] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
   const [formState, setFormState] = useState({
     name: "",
     amount: "",
@@ -127,7 +135,11 @@ export default function TransactionList({
   return (
     <ul className="transaction-list">
       {visibleTransactions.map((t, i) => (
-        <li key={t.id || i} className="transaction-item">
+        <li 
+          key={t.id || i} 
+          className={`transaction-item ${selectedId === t.id ? 'transaction-item-selected' : ''}`}
+          onClick={() => setSelectedId(selectedId === t.id ? null : t.id)}
+        >
           {editingId === t.id ? (
             <div className="transaction-edit-form">
               <div className="edit-row">
@@ -299,6 +311,9 @@ export default function TransactionList({
               </div>
               <div className="transaction-meta">
                 <span className="transaction-category">{t.category}</span>
+                {t.isPrelevement && (
+                  <span className="transaction-prelevement">Prelevement</span>
+                )}
                 {!t.isPrelevement && (
                   <span
                     className={`transaction-type ${
@@ -308,15 +323,17 @@ export default function TransactionList({
                     {t.type === "income" ? "Income" : "Outcome"}
                   </span>
                 )}
+                {t.category !== "Saving" && (t.currentAccount || t.accountName) && (
+                  <span className="transaction-account">
+                    {t.currentAccount || t.accountName}
+                  </span>
+                )}
                 {t.category === "Saving" && (
                   <span className="transaction-transfer">
                     {t.type === "income"
                       ? `${t.savingAccount || t.accountName || "Savings"} → ${t.currentAccount || currentAccounts[0] || "Current"}`
                       : `${t.currentAccount || currentAccounts[0] || "Current"} → ${t.savingAccount || t.accountName || "Savings"}`}
                   </span>
-                )}
-                {t.isPrelevement && (
-                  <span className="transaction-prelevement">Prelevement</span>
                 )}
                 {onUpdate && (
                   <button

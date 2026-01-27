@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import TransactionList from "./TransactionList";
-import DashboardStats from "./DashboardStats";
+import MonthlyStats from "./MonthlyStats";
 import "./ArchivePage.css";
 
 export default function ArchivePage({
@@ -60,7 +60,7 @@ export default function ArchivePage({
   return (
     <main className="app-archive">
       <section className="panel panel-archive">
-        <DashboardStats
+        <MonthlyStats
           transactions={transactions}
           selectedYear={selectedYear}
           selectedMonth={selectedMonth ? Number(selectedMonth) - 1 : undefined}

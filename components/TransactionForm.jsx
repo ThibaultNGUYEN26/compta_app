@@ -2,10 +2,17 @@ import React, { useEffect, useState } from "react";
 import "./TransactionForm.css";
 
 const categories = [
-  "Food",
+  "Restaurant",
+  "Groceries",
   "Transport",
+  "Shopping",
   "Bills",
+  "Utilities",
+  "Housing",
+  "Health",
   "Entertainment",
+  "Travel",
+  "Subscriptions",
   "Other",
   "Saving",
 ];
@@ -16,6 +23,7 @@ export default function TransactionForm({
   onCancel,
   currentAccounts = [],
   savingAccounts = [],
+  selectedCurrentAccount,
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const safeInitial = initialValues || {};
@@ -29,7 +37,7 @@ export default function TransactionForm({
     savingAccounts[0] || ""
   );
   const [currentAccount, setCurrentAccount] = useState(
-    currentAccounts[0] || "Current account"
+    selectedCurrentAccount || currentAccounts[0] || "Current account"
   );
 
   useEffect(() => {
@@ -41,7 +49,9 @@ export default function TransactionForm({
       setIsPrelevement(false);
       setDate(today);
       setSavingAccount(savingAccounts[0] || "");
-      setCurrentAccount(currentAccounts[0] || "Current account");
+      setCurrentAccount(
+        selectedCurrentAccount || currentAccounts[0] || "Current account"
+      );
       return;
     }
     setName(safeInitial.name || "");
@@ -61,6 +71,7 @@ export default function TransactionForm({
     );
     setCurrentAccount(
       safeInitial.currentAccount ||
+        selectedCurrentAccount ||
         currentAccounts[0] ||
         "Current account"
     );
@@ -69,7 +80,7 @@ export default function TransactionForm({
     } else {
       setDate(today);
     }
-  }, [currentAccounts, initialValues, savingAccounts, today]);
+  }, [currentAccounts, initialValues, savingAccounts, selectedCurrentAccount, today]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -103,7 +114,9 @@ export default function TransactionForm({
       setIsPrelevement(false);
       setDate(today);
       setSavingAccount(savingAccounts[0] || "");
-      setCurrentAccount(currentAccounts[0] || "Current account");
+      setCurrentAccount(
+        selectedCurrentAccount || currentAccounts[0] || "Current account"
+      );
     }
   };
 

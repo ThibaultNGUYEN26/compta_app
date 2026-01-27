@@ -1,0 +1,11 @@
+{
+  "accounts": {
+    "current": [
+      "Current account"
+    ],
+    "saving": []
+  },
+  "theme": "light",
+  "language": "en",
+  "currency": "EUR"
+}
