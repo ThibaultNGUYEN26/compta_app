@@ -9,85 +9,60 @@ const formatPercentage = (value) =>
   Number.isFinite(value) ? value.toFixed(1) : "0.0";
 
 export default function KPISection({ kpis }) {
+  const totalBalance = kpis.currentBalance + kpis.savingsBalance;
+  const totalFlow = kpis.realIncome + kpis.realOutcome;
+
+  const currentBalancePct =
+    totalBalance !== 0 ? formatPercentage((kpis.currentBalance / totalBalance) * 100) : undefined;
+  const savingsBalancePct =
+    totalBalance !== 0 ? formatPercentage((kpis.savingsBalance / totalBalance) * 100) : undefined;
+  const incomePct =
+    totalFlow > 0 ? formatPercentage((kpis.realIncome / totalFlow) * 100) : undefined;
+  const outcomePct =
+    totalFlow > 0 ? formatPercentage((kpis.realOutcome / totalFlow) * 100) : undefined;
+  const prelevPct =
+    kpis.realOutcome > 0 ? formatPercentage((kpis.prelevTotal / kpis.realOutcome) * 100) : undefined;
+
   return (
     <div className="kpi-section">
       <h3 className="kpi-section-title">Key Metrics</h3>
       <div className="kpi-grid">
         <KPICard
-          label="Current Balance"
+          label="Total Current Balance"
           value={formatCurrency(kpis.currentBalance)}
           variant="balance"
-          meta="All current accounts"
+          count={kpis.realIncomeCount + kpis.realOutcomeCount}
+          percentage={currentBalancePct}
         />
         <KPICard
-          label="Savings Balance"
+          label="Total Saving Balance"
           value={formatCurrency(kpis.savingsBalance)}
           variant="balance"
-          meta="All savings accounts"
-        />
-        <KPICard
-          label="Total Balance"
-          value={formatCurrency(kpis.totalBalance)}
-          variant="balance"
-          meta="Current + Savings"
+          count={kpis.savingsDepositsCount + kpis.savingsWithdrawalsCount}
+          percentage={savingsBalancePct}
         />
         
         <KPICard
-          label="Real Income"
+          label="Total Incomes"
           value={formatCurrency(kpis.realIncome)}
           variant="income"
           count={kpis.realIncomeCount}
-          meta="External income only"
+          percentage={incomePct}
         />
         <KPICard
-          label="Real Outcome"
+          label="Total Expenses"
           value={formatCurrency(kpis.realOutcome)}
           variant="expense"
           count={kpis.realOutcomeCount}
-          meta="External expenses only"
-        />
-        <KPICard
-          label="Real Net"
-          value={formatCurrency(kpis.realNet)}
-          variant={kpis.realNet >= 0 ? "positive" : "negative"}
-          percentage={kpis.realIncome > 0 ? formatPercentage((kpis.realNet / kpis.realIncome) * 100) : undefined}
-          meta="Income - Outcome"
+          percentage={outcomePct}
         />
 
         <KPICard
-          label="Savings Deposits"
-          value={formatCurrency(kpis.savingsDeposits)}
-          variant="default"
-          count={kpis.savingsDepositsCount}
-          meta="Money moved to savings"
-        />
-        <KPICard
-          label="Savings Withdrawals"
-          value={formatCurrency(kpis.savingsWithdrawals)}
-          variant="default"
-          count={kpis.savingsWithdrawalsCount}
-          meta="Money taken from savings"
-        />
-        <KPICard
-          label="Savings Net Change"
-          value={formatCurrency(kpis.savingsNetChange)}
-          variant={kpis.savingsNetChange >= 0 ? "positive" : "negative"}
-          meta="Deposits - Withdrawals"
-        />
-
-        <KPICard
-          label="Prelevements"
+          label="Total Prelevements"
           value={formatCurrency(kpis.prelevTotal)}
           variant="prelevement"
           count={kpis.prelevCount}
-          percentage={kpis.realOutcome > 0 ? formatPercentage((kpis.prelevTotal / kpis.realOutcome) * 100) : undefined}
-          meta="Automatic payments"
-        />
-        <KPICard
-          label="Savings Rate"
-          value={`${formatPercentage(kpis.savingsRate)}%`}
-          variant="positive"
-          meta="Savings / Income"
+          percentage={prelevPct}
         />
       </div>
     </div>

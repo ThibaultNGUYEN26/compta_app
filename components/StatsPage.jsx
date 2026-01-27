@@ -145,13 +145,16 @@ export default function StatsPage({ transactions }) {
       />
 
       <div className="stats-content">
-        <KPISection kpis={kpis} />
-
-        <div className="stats-charts-grid">
-          <div className="stats-chart-card">
+        <div className="stats-top-row">
+          <div className="stats-top-main">
+            <KPISection kpis={kpis} />
+          </div>
+          <div className="stats-chart-card stats-donut-card">
             <MonthlyIncomeOutcome transactions={filteredTransactions} />
           </div>
+        </div>
 
+        <div className="stats-charts-grid">
           <div className="stats-chart-card">
             <CategoryBreakdown
               categories={categoryBreakdown}
