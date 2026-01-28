@@ -5,6 +5,7 @@ export default function AccountManager({
   currentAccounts,
   savingAccounts,
   savingLinks = {},
+  language = "fr",
   onAddCurrent,
   onAddSaving,
   onRenameCurrent,
@@ -12,7 +13,45 @@ export default function AccountManager({
   onDeleteCurrent,
   onDeleteSaving,
   onLinkSaving,
+  onLanguageChange,
 }) {
+  const labels = {
+    fr: {
+      subtitle: "Gérez vos comptes courants et d'épargne.",
+      currentTitle: "Comptes courants",
+      savingTitle: "Comptes d'épargne",
+      addCurrent: "Ajouter un compte courant",
+      addSaving: "Ajouter un compte d'épargne",
+      add: "Ajouter",
+      edit: "Modifier",
+      cancel: "Annuler",
+      delete: "Supprimer",
+      save: "Enregistrer",
+      linkedCurrent: "Compte courant lié",
+      language: "Langue",
+      fr: "Français",
+      en: "English",
+    },
+    en: {
+      subtitle: "Manage your current and saving accounts.",
+      currentTitle: "Current accounts",
+      savingTitle: "Saving accounts",
+      addCurrent: "Add current account",
+      addSaving: "Add saving account",
+      add: "Add",
+      edit: "Edit",
+      cancel: "Cancel",
+      delete: "Delete",
+      save: "Save",
+      linkedCurrent: "Linked current",
+      language: "Language",
+      fr: "French",
+      en: "English",
+    },
+  };
+
+  const t = labels[language] || labels.fr;
+
   const [currentName, setCurrentName] = useState("");
   const [savingName, setSavingName] = useState("");
   const [editingCurrentIndex, setEditingCurrentIndex] = useState(null);
@@ -37,13 +76,25 @@ export default function AccountManager({
   };
 
   return (
-    <div className="account-manager">
+    <div className={`account-manager${language === "en" ? " is-en" : ""}`}>
+      <div className="account-settings-row">
+        <label className="account-settings-label">
+          {t.language}
+          <select
+            value={language}
+            onChange={(e) => onLanguageChange?.(e.target.value)}
+          >
+            <option value="fr">{t.fr}</option>
+            <option value="en">{t.en}</option>
+          </select>
+        </label>
+      </div>
       <p className="account-subtitle">
-        Manage your current and saving accounts.
+        {t.subtitle}
       </p>
       <div className="account-grid">
         <section className="account-block">
-          <h3>Current accounts</h3>
+          <h3>{t.currentTitle}</h3>
           <ul>
             {currentAccounts.map((name, index) => (
               <li key={`${name}-${index}`} className="account-item">
@@ -64,7 +115,7 @@ export default function AccountManager({
                           setEditingCurrentValue("");
                         }}
                       >
-                        Cancel
+                        {t.cancel}
                       </button>
                       <button
                         type="button"
@@ -75,7 +126,7 @@ export default function AccountManager({
                           setEditingCurrentValue("");
                         }}
                       >
-                        Delete
+                        {t.delete}
                       </button>
                       <button
                         type="button"
@@ -87,7 +138,7 @@ export default function AccountManager({
                           setEditingCurrentValue("");
                         }}
                       >
-                        Save
+                        {t.save}
                       </button>
                     </div>
                   </>
@@ -102,7 +153,7 @@ export default function AccountManager({
                         setEditingCurrentValue(name);
                       }}
                     >
-                      Edit
+                      {t.edit}
                     </button>
                   </>
                 )}
@@ -112,15 +163,15 @@ export default function AccountManager({
           <form className="account-form" onSubmit={submitCurrent}>
             <input
               type="text"
-              placeholder="Add current account"
+              placeholder={t.addCurrent}
               value={currentName}
               onChange={(e) => setCurrentName(e.target.value)}
             />
-            <button type="submit">Add</button>
+            <button type="submit">{t.add}</button>
           </form>
         </section>
         <section className="account-block">
-          <h3>Saving accounts</h3>
+          <h3>{t.savingTitle}</h3>
           <ul>
             {savingAccounts.map((name, index) => (
               <li key={`${name}-${index}`} className="account-item">
@@ -141,7 +192,7 @@ export default function AccountManager({
                           setEditingSavingValue("");
                         }}
                       >
-                        Cancel
+                        {t.cancel}
                       </button>
                       <button
                         type="button"
@@ -152,7 +203,7 @@ export default function AccountManager({
                           setEditingSavingValue("");
                         }}
                       >
-                        Delete
+                        {t.delete}
                       </button>
                       <button
                         type="button"
@@ -160,11 +211,11 @@ export default function AccountManager({
                           const trimmed = editingSavingValue.trim();
                           if (!trimmed) return;
                           onRenameSaving?.(index, trimmed);
-                          setEditingSavingIndex(null);
-                          setEditingSavingValue("");
+                        setEditingSavingIndex(null);
+                        setEditingSavingValue("");
                         }}
                       >
-                        Save
+                        {t.save}
                       </button>
                     </div>
                   </>
@@ -179,13 +230,13 @@ export default function AccountManager({
                         setEditingSavingValue(name);
                       }}
                     >
-                      Edit
+                      {t.edit}
                     </button>
                   </>
                 )}
                 <div className="account-link-row">
                   <label className="account-link-label">
-                    Linked current
+                    {t.linkedCurrent}
                     <select
                       value={savingLinks[name] || currentAccounts[0] || ""}
                       onChange={(e) => onLinkSaving?.(name, e.target.value)}
@@ -206,11 +257,11 @@ export default function AccountManager({
           <form className="account-form" onSubmit={submitSaving}>
             <input
               type="text"
-              placeholder="Add saving account"
+              placeholder={t.addSaving}
               value={savingName}
               onChange={(e) => setSavingName(e.target.value)}
             />
-            <button type="submit">Add</button>
+            <button type="submit">{t.add}</button>
           </form>
         </section>
       </div>

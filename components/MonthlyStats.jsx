@@ -23,7 +23,38 @@ const getReferenceDate = (items, year, month) => {
   return getLatestDate(items);
 };
 
-export default function MonthlyStats({ transactions, selectedYear, selectedMonth, scope }) {
+export default function MonthlyStats({
+  transactions,
+  selectedYear,
+  selectedMonth,
+  scope,
+  language = "fr",
+}) {
+  const labels = {
+    fr: {
+      balance: "Solde du mois",
+      income: "Revenus du mois",
+      outcome: "Dépenses du mois",
+      transactions: "Transactions",
+      balanceMeta: "Revenus moins dépenses",
+      incomeMeta: (label) => `Revenus pour ${label}`,
+      outcomeMeta: (label) => `Dépenses pour ${label}`,
+      transactionsMeta: (label) => `Total pour ${label}`,
+      locale: "fr-FR",
+    },
+    en: {
+      balance: "Month balance",
+      income: "Month income",
+      outcome: "Month outcome",
+      transactions: "Transactions",
+      balanceMeta: "Income minus outcome",
+      incomeMeta: (label) => `Incomes for ${label}`,
+      outcomeMeta: (label) => `Expenses for ${label}`,
+      transactionsMeta: (label) => `Total for ${label}`,
+      locale: "en-US",
+    },
+  };
+  const t = labels[language] || labels.fr;
   const referenceDate = useMemo(
     () => getReferenceDate(transactions, selectedYear, selectedMonth),
     [selectedMonth, selectedYear, transactions]
@@ -73,7 +104,7 @@ export default function MonthlyStats({ transactions, selectedYear, selectedMonth
     };
   }, [referenceDate, transactions]);
 
-  const monthLabel = referenceDate.toLocaleString(undefined, {
+  const monthLabel = referenceDate.toLocaleString(t.locale, {
     month: "short",
     year: "numeric",
   });
@@ -82,7 +113,7 @@ export default function MonthlyStats({ transactions, selectedYear, selectedMonth
     <div className="monthly-stats">
       <div className="monthly-cards">
         <div className="monthly-card">
-          <span className="card-label">Month balance</span>
+          <span className="card-label">{t.balance}</span>
           <strong
             className={`card-value ${
               monthly.balance >= 0 ? "is-income" : "is-expense"
@@ -90,26 +121,26 @@ export default function MonthlyStats({ transactions, selectedYear, selectedMonth
           >
             {formatCurrency(monthly.balance)}
           </strong>
-          <span className="card-meta">Income minus outcome</span>
+          <span className="card-meta">{t.balanceMeta}</span>
         </div>
         <div className="monthly-card">
-          <span className="card-label">Month income</span>
+          <span className="card-label">{t.income}</span>
           <strong className="card-value is-income">
             {formatCurrency(monthly.income)}
           </strong>
-          <span className="card-meta">Incomes for {monthLabel}</span>
+          <span className="card-meta">{t.incomeMeta(monthLabel)}</span>
         </div>
         <div className="monthly-card">
-          <span className="card-label">Month outcome</span>
+          <span className="card-label">{t.outcome}</span>
           <strong className="card-value is-expense">
             {formatCurrency(monthly.outcome)}
           </strong>
-          <span className="card-meta">Expenses for {monthLabel}</span>
+          <span className="card-meta">{t.outcomeMeta(monthLabel)}</span>
         </div>
         <div className="monthly-card">
-          <span className="card-label">Transactions</span>
+          <span className="card-label">{t.transactions}</span>
           <strong className="card-value">{monthly.count}</strong>
-          <span className="card-meta">Total for {monthLabel}</span>
+          <span className="card-meta">{t.transactionsMeta(monthLabel)}</span>
         </div>
       </div>
       <div></div>

@@ -3,12 +3,28 @@ import "./SavingsAnalysis.css";
 
 const formatCurrency = (value) => `${value.toFixed(2)} EUR`;
 
-export default function SavingsAnalysis({ savingsByAccount }) {
+export default function SavingsAnalysis({ savingsByAccount, language = "fr" }) {
+  const labels = {
+    fr: {
+      title: "Épargne par compte",
+      empty: "Aucun transfert d'épargne",
+      deposits: "Dépôts",
+      withdrawals: "Retraits",
+    },
+    en: {
+      title: "Savings by Account",
+      empty: "No savings transfers",
+      deposits: "Deposits",
+      withdrawals: "Withdrawals",
+    },
+  };
+  const t = labels[language] || labels.fr;
+
   if (!savingsByAccount || savingsByAccount.length === 0) {
     return (
       <div className="savings-analysis">
-        <h4 className="chart-title">Savings by Account</h4>
-        <div className="chart-empty">No savings transfers</div>
+        <h4 className="chart-title">{t.title}</h4>
+        <div className="chart-empty">{t.empty}</div>
       </div>
     );
   }
@@ -19,7 +35,7 @@ export default function SavingsAnalysis({ savingsByAccount }) {
 
   return (
     <div className="savings-analysis">
-      <h4 className="chart-title">Savings by Account</h4>
+      <h4 className="chart-title">{t.title}</h4>
       <div className="savings-bars">
         {savingsByAccount.map((account) => {
           const depositPercent = maxValue > 0 ? (account.deposits / maxValue) * 100 : 0;
@@ -40,7 +56,7 @@ export default function SavingsAnalysis({ savingsByAccount }) {
               </div>
               <div className="savings-bars-pair">
                 <div className="savings-bar-row">
-                  <span className="savings-bar-label">Deposits</span>
+                  <span className="savings-bar-label">{t.deposits}</span>
                   <div className="savings-bar-track">
                     <div
                       className="savings-bar-fill savings-bar-deposit"
@@ -50,7 +66,7 @@ export default function SavingsAnalysis({ savingsByAccount }) {
                   <span className="savings-bar-value">{formatCurrency(account.deposits)}</span>
                 </div>
                 <div className="savings-bar-row">
-                  <span className="savings-bar-label">Withdrawals</span>
+                  <span className="savings-bar-label">{t.withdrawals}</span>
                   <div className="savings-bar-track">
                     <div
                       className="savings-bar-fill savings-bar-withdrawal"

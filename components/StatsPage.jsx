@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import DashboardControls from "./dashboard/DashboardControls";
 import KPISection from "./dashboard/KPISection";
 import MonthlyIncomeOutcome from "./dashboard/MonthlyIncomeOutcome";
+import MonthlyIncomeExpenseChart from "./dashboard/MonthlyIncomeExpenseChart";
 import CategoryBreakdown from "./dashboard/CategoryBreakdown";
 import SavingsAnalysis from "./dashboard/SavingsAnalysis";
 import TransactionDrilldown from "./dashboard/TransactionDrilldown";
@@ -11,6 +12,7 @@ import {
   filterByScope,
   computeKpis,
   computeCategoryBreakdown,
+  computeMonthlySeries,
   computeSavingsBySavingAccount,
   computeDailyExpenses,
 } from "../utils/dashboardUtils";
@@ -21,7 +23,17 @@ export default function StatsPage({
   currentAccounts = [],
   savingAccounts = [],
   savingLinks = {},
+  language = "fr",
 }) {
+  const labels = {
+    fr: {
+      allCurrent: "Tous les comptes courants",
+    },
+    en: {
+      allCurrent: "All current accounts",
+    },
+  };
+  const t = labels[language] || labels.fr;
   const settingsAccounts = useMemo(() => {
     return {
       current: Array.isArray(currentAccounts) ? currentAccounts : [],
@@ -76,12 +88,12 @@ export default function StatsPage({
   }, [selectedYear, years]);
 
   const scopeOptions = useMemo(() => {
-    const options = [{ value: "all", label: "All current accounts" }];
+    const options = [{ value: "all", label: t.allCurrent }];
     accountLists.current.forEach((name) => {
       options.push({ value: `current::${name}`, label: `${name}` });
     });
     return options;
-  }, [accountLists]);
+  }, [accountLists, t.allCurrent]);
 
   useEffect(() => {
     if (scopeValue === "all") return;
@@ -121,6 +133,10 @@ export default function StatsPage({
     return computeCategoryBreakdown(filteredTransactions);
   }, [filteredTransactions]);
 
+  const monthlySeries = useMemo(() => {
+    return computeMonthlySeries(filteredTransactions, selectedYear);
+  }, [filteredTransactions, selectedYear]);
+
   const savingsByAccount = useMemo(() => {
     return computeSavingsBySavingAccount(
       dateFilteredTransactions,
@@ -144,15 +160,19 @@ export default function StatsPage({
         scopeValue={scopeValue}
         onScopeChange={setScopeValue}
         scopeOptions={scopeOptions}
+        language={language}
       />
 
       <div className="stats-content">
         <div className="stats-top-row">
           <div className="stats-top-main">
-            <KPISection kpis={kpis} />
+            <KPISection kpis={kpis} language={language} />
           </div>
           <div className="stats-chart-card stats-donut-card">
-            <MonthlyIncomeOutcome transactions={filteredTransactions} />
+            <MonthlyIncomeOutcome
+              transactions={filteredTransactions}
+              language={language}
+            />
           </div>
         </div>
 
@@ -161,26 +181,43 @@ export default function StatsPage({
             <CategoryBreakdown
               categories={categoryBreakdown}
               totalOutcome={kpis.realOutcome}
+              language={language}
             />
           </div>
 
           <div className="stats-chart-card">
-            <SavingsAnalysis savingsByAccount={savingsByAccount} />
+            <SavingsAnalysis
+              savingsByAccount={savingsByAccount}
+              language={language}
+            />
           </div>
         </div>
 
-        {selectedMonth !== "" && selectedMonth !== null && selectedMonth !== undefined && (
+        {selectedMonth !== "" && selectedMonth !== null && selectedMonth !== undefined ? (
           <div className="stats-full-width">
             <DailyExpenseChart 
               dailyExpenses={dailyExpenses}
               selectedYear={selectedYear}
               selectedMonth={selectedMonth}
+              language={language}
+            />
+          </div>
+        ) : (
+          <div className="stats-full-width">
+            <MonthlyIncomeExpenseChart
+              monthlySeries={monthlySeries}
+              selectedYear={selectedYear}
+              language={language}
             />
           </div>
         )}
 
         <div className="stats-drilldown">
-          <TransactionDrilldown transactions={filteredTransactions} scope={scope} />
+          <TransactionDrilldown
+            transactions={filteredTransactions}
+            scope={scope}
+            language={language}
+          />
         </div>
       </div>
     </div>

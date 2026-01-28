@@ -11,7 +11,33 @@ export default function ArchivePage({
   currentAccounts,
   savingAccounts,
   savingLinks = {},
+  language = "fr",
 }) {
+  const labels = {
+    fr: {
+      title: "Archives",
+      subtitle: "Sélectionnez une année et un mois pour parcourir les transactions.",
+      account: "Compte",
+      year: "Année",
+      month: "Mois",
+      accountLabel: "Compte",
+      allTypes: "Tous les types",
+      months: "long",
+      accountFallback: "Compte courant",
+    },
+    en: {
+      title: "Archive",
+      subtitle: "Select a year and month to browse transactions.",
+      account: "Account",
+      year: "Year",
+      month: "Month",
+      accountLabel: "Account",
+      allTypes: "All types",
+      months: "long",
+      accountFallback: "Current account",
+    },
+  };
+  const t = labels[language] || labels.fr;
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
   const [scopeValue, setScopeValue] = useState("");
@@ -99,17 +125,16 @@ export default function ArchivePage({
           selectedYear={selectedYear}
           selectedMonth={selectedMonth ? Number(selectedMonth) - 1 : undefined}
           scope={scope}
+          language={language}
         />
         <div className="archive-header">
           <div>
-            <h2 className="panel-title">Archive</h2>
-            <p className="archive-subtitle">
-              Select a year and month to browse transactions.
-            </p>
+            <h2 className="panel-title">{t.title}</h2>
+            <p className="archive-subtitle">{t.subtitle}</p>
           </div>
           <div className="archive-controls">
             <label className="archive-field">
-              <span>Account</span>
+              <span>{t.account}</span>
               <select
                 value={scopeValue}
                 onChange={(e) => setScopeValue(e.target.value)}
@@ -122,7 +147,7 @@ export default function ArchivePage({
               </select>
             </label>
             <label className="archive-field">
-              <span>Year</span>
+              <span>{t.year}</span>
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
@@ -135,7 +160,7 @@ export default function ArchivePage({
               </select>
             </label>
             <label className="archive-field">
-              <span>Month</span>
+              <span>{t.month}</span>
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
@@ -149,7 +174,10 @@ export default function ArchivePage({
                           Number(selectedYear),
                           Number(month) - 1,
                           1
-                        ).toLocaleString(undefined, { month: "long" });
+                        ).toLocaleString(
+                          language === "fr" ? "fr-FR" : "en-US",
+                          { month: "long" }
+                        );
                         return (
                           <option key={month} value={month}>
                             {label}
@@ -170,6 +198,7 @@ export default function ArchivePage({
           currentAccounts={currentAccounts}
           savingAccounts={savingAccounts}
           scope={scope}
+          language={language}
         />
       </section>
     </main>

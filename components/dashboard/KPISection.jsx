@@ -8,7 +8,28 @@ const formatCurrency = (value) =>
 const formatPercentage = (value) =>
   Number.isFinite(value) ? value.toFixed(1) : "0.0";
 
-export default function KPISection({ kpis }) {
+export default function KPISection({ kpis, language = "fr" }) {
+  const labels = {
+    fr: {
+      title: "Indicateurs clés",
+      currentBalance: "Solde courant total",
+      savingBalance: "Solde épargne total",
+      incomes: "Total des revenus",
+      expenses: "Total des dépenses",
+      expensesNoPrelev: "Total des dépenses (hors prélèvements)",
+      prelevements: "Total des prélèvements",
+    },
+    en: {
+      title: "Key Metrics",
+      currentBalance: "Total Current Balance",
+      savingBalance: "Total Saving Balance",
+      incomes: "Total Incomes",
+      expenses: "Total Expenses",
+      expensesNoPrelev: "Total Expenses (no direct debit)",
+      prelevements: "Total Direct Debits",
+    },
+  };
+  const t = labels[language] || labels.fr;
   const totalBalance = kpis.currentBalance + kpis.savingsBalance;
   const totalFlow = kpis.realIncome + kpis.realOutcome;
 
@@ -28,17 +49,17 @@ export default function KPISection({ kpis }) {
 
   return (
     <div className="kpi-section">
-      <h3 className="kpi-section-title">Key Metrics</h3>
+      <h3 className="kpi-section-title">{t.title}</h3>
       <div className="kpi-grid">
         <KPICard
-          label="Total Current Balance"
+          label={t.currentBalance}
           value={formatCurrency(kpis.currentBalance)}
           variant="balance"
           count={kpis.realIncomeCount + kpis.realOutcomeCount + kpis.prelevCount}
           percentage={currentBalancePct}
         />
         <KPICard
-          label="Total Saving Balance"
+          label={t.savingBalance}
           value={formatCurrency(kpis.savingsBalance)}
           variant="balance"
           count={kpis.savingsDepositsCount + kpis.savingsWithdrawalsCount}
@@ -46,21 +67,21 @@ export default function KPISection({ kpis }) {
         />
         
         <KPICard
-          label="Total Incomes"
+          label={t.incomes}
           value={formatCurrency(kpis.realIncome)}
           variant="income"
           count={kpis.realIncomeCount}
           percentage={incomePct}
         />
         <KPICard
-          label="Total Expenses"
+          label={t.expenses}
           value={formatCurrency(kpis.realOutcome)}
           variant="expense"
           percentage={outcomePct}
         />
 
         <KPICard
-          label="Total Expenses (no prelev.)"
+          label={t.expensesNoPrelev}
           value={formatCurrency(expenseNoPrelev)}
           variant="expense"
           count={kpis.realOutcomeCount}
@@ -68,7 +89,7 @@ export default function KPISection({ kpis }) {
         />
 
         <KPICard
-          label="Total Prelevements"
+          label={t.prelevements}
           value={formatCurrency(kpis.prelevTotal)}
           variant="prelevement"
           count={kpis.prelevCount}

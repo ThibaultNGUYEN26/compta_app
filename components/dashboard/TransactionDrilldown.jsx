@@ -2,12 +2,100 @@ import React, { useState, useMemo } from "react";
 import "./TransactionDrilldown.css";
 
 const formatCurrency = (value) => `${value.toFixed(2)} EUR`;
-const formatDate = (date) => {
+const formatDate = (date, locale) => {
   const d = new Date(date);
-  return isNaN(d.getTime()) ? "" : d.toLocaleDateString();
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(locale || "en-US");
 };
 
-export default function TransactionDrilldown({ transactions, scope, onFilter }) {
+export default function TransactionDrilldown({
+  transactions,
+  scope,
+  onFilter,
+  language = "fr",
+}) {
+  const labels = {
+    fr: {
+      title: "Détails des transactions",
+      search: "Rechercher par nom...",
+      allTypes: "Tous les types",
+      income: "Revenu",
+      expense: "Dépense",
+      allCategories: "Toutes les catégories",
+      directDebitOnly: "Prélèvements uniquement",
+      savingsOnly: "Épargne uniquement",
+      clear: "Effacer les filtres",
+      date: "Date",
+      name: "Nom",
+      account: "Compte",
+      category: "Catégorie",
+      amount: "Montant",
+      tags: "Tags",
+      empty: "Aucune transaction trouvée",
+      of: "sur",
+      current: "Courant",
+      savings: "Épargne",
+      directDebit: "Prélèvement",
+      categories: {
+        Restaurant: "Restaurant",
+        Groceries: "Courses",
+        Transport: "Transport",
+        Shopping: "Shopping",
+        Bills: "Factures",
+        Utilities: "Services",
+        Housing: "Logement",
+        Health: "Santé",
+        Entertainment: "Loisirs",
+        Travel: "Voyage",
+        Subscriptions: "Abonnements",
+        Other: "Autre",
+        Transfer: "Virement",
+        Saving: "Épargne",
+      },
+      locale: "fr-FR",
+    },
+    en: {
+      title: "Transaction Details",
+      search: "Search by name...",
+      allTypes: "All types",
+      income: "Income",
+      expense: "Expense",
+      allCategories: "All categories",
+      directDebitOnly: "Direct debit only",
+      savingsOnly: "Savings only",
+      clear: "Clear filters",
+      date: "Date",
+      name: "Name",
+      account: "Account",
+      category: "Category",
+      amount: "Amount",
+      tags: "Tags",
+      empty: "No transactions found",
+      of: "of",
+      current: "Current",
+      savings: "Savings",
+      directDebit: "Direct Debit",
+      categories: {
+        Restaurant: "Restaurant",
+        Groceries: "Groceries",
+        Transport: "Transport",
+        Shopping: "Shopping",
+        Bills: "Bills",
+        Utilities: "Utilities",
+        Housing: "Housing",
+        Health: "Health",
+        Entertainment: "Entertainment",
+        Travel: "Travel",
+        Subscriptions: "Subscriptions",
+        Other: "Other",
+        Transfer: "Transfer",
+        Saving: "Saving",
+      },
+      locale: "en-US",
+    },
+  };
+  const i18n = labels[language] || labels.fr;
+
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -33,13 +121,13 @@ export default function TransactionDrilldown({ transactions, scope, onFilter }) 
 
   const getAccountLabel = (t) => {
     if (t.category === "Transfer") {
-      const from = t.currentAccount || "Current";
-      const to = t.transferAccount || "Current";
+      const from = t.currentAccount || i18n.current;
+      const to = t.transferAccount || i18n.current;
       return `${from} → ${to}`;
     }
     if (t.category === "Saving") {
-      const from = t.currentAccount || "Current";
-      const to = t.savingAccount || "Savings";
+      const from = t.currentAccount || i18n.current;
+      const to = t.savingAccount || i18n.savings;
       return `${from} → ${to}`;
     }
     return t.currentAccount || "";
@@ -89,9 +177,9 @@ export default function TransactionDrilldown({ transactions, scope, onFilter }) 
   return (
     <div className="transaction-drilldown">
       <div className="drilldown-header">
-        <h4 className="chart-title">Transaction Details</h4>
+        <h4 className="chart-title">{i18n.title}</h4>
         <span className="drilldown-count">
-          {filteredTransactions.length} of {transactions.length}
+          {filteredTransactions.length} {i18n.of} {transactions.length}
         </span>
       </div>
 
@@ -99,23 +187,23 @@ export default function TransactionDrilldown({ transactions, scope, onFilter }) 
         <input
           type="text"
           className="drilldown-search"
-          placeholder="Search by name..."
+          placeholder={i18n.search}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
         
         <div className="drilldown-filter-row">
           <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-            <option value="all">All types</option>
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
+            <option value="all">{i18n.allTypes}</option>
+            <option value="income">{i18n.income}</option>
+            <option value="expense">{i18n.expense}</option>
           </select>
 
           <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-            <option value="all">All categories</option>
+            <option value="all">{i18n.allCategories}</option>
             {categories.map((cat) => (
               <option key={cat} value={cat}>
-                {cat}
+                {i18n.categories[cat] || cat}
               </option>
             ))}
           </select>
@@ -126,7 +214,7 @@ export default function TransactionDrilldown({ transactions, scope, onFilter }) 
               checked={prelevFilter}
               onChange={(e) => setPrelevFilter(e.target.checked)}
             />
-            <span>Prelevements only</span>
+            <span>{i18n.directDebitOnly}</span>
           </label>
 
           <label className="drilldown-checkbox">
@@ -135,12 +223,12 @@ export default function TransactionDrilldown({ transactions, scope, onFilter }) 
               checked={savingFilter}
               onChange={(e) => setSavingFilter(e.target.checked)}
             />
-            <span>Savings only</span>
+            <span>{i18n.savingsOnly}</span>
           </label>
 
           {hasFilters && (
             <button type="button" className="drilldown-clear" onClick={clearFilters}>
-              Clear filters
+              {i18n.clear}
             </button>
           )}
         </div>
@@ -150,36 +238,48 @@ export default function TransactionDrilldown({ transactions, scope, onFilter }) 
         <table className="drilldown-table">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Name</th>
-              <th>Account</th>
-              <th>Category</th>
-              <th>Amount</th>
-              <th>Tags</th>
+              <th>{i18n.date}</th>
+              <th>{i18n.name}</th>
+              <th>{i18n.account}</th>
+              <th>{i18n.category}</th>
+              <th>{i18n.amount}</th>
+              <th>{i18n.tags}</th>
             </tr>
           </thead>
           <tbody>
             {filteredTransactions.length === 0 ? (
               <tr>
                 <td colSpan="6" className="drilldown-empty">
-                  No transactions found
+                  {i18n.empty}
                 </td>
               </tr>
             ) : (
-              filteredTransactions.map((t, index) => (
-                <tr key={t.id || index}>
-                  <td className="drilldown-date">{formatDate(t.date)}</td>
-                  <td className="drilldown-name">{t.name}</td>
-                  <td className="drilldown-account">{getAccountLabel(t)}</td>
-                  <td className="drilldown-category">{t.category}</td>
-                  <td className={`drilldown-amount ${getDisplayType(t) === "income" ? "income" : "expense"}`}>
-                    {getDisplayType(t) === "income" ? "+" : "-"}
-                    {formatCurrency(t.amount || 0)}
+              filteredTransactions.map((tx, index) => (
+                <tr key={tx.id || index}>
+                  <td className="drilldown-date">
+                    {formatDate(tx.date, i18n.locale)}
+                  </td>
+                  <td className="drilldown-name">{tx.name}</td>
+                  <td className="drilldown-account">{getAccountLabel(tx)}</td>
+                  <td className="drilldown-category">
+                    {i18n.categories[tx.category] || tx.category}
+                  </td>
+                  <td
+                    className={`drilldown-amount ${
+                      getDisplayType(tx) === "income" ? "income" : "expense"
+                    }`}
+                  >
+                    {getDisplayType(tx) === "income" ? "+" : "-"}
+                    {formatCurrency(tx.amount || 0)}
                   </td>
                   <td className="drilldown-tags">
-                    {t.isPrelevement && <span className="tag tag-prelevement">Prelevement</span>}
-                    {t.category === "Saving" && (
-                      <span className="tag tag-saving">{t.savingAccount}</span>
+                    {tx.isPrelevement && (
+                      <span className="tag tag-prelevement">
+                        {i18n.directDebit}
+                      </span>
+                    )}
+                    {tx.category === "Saving" && (
+                      <span className="tag tag-saving">{tx.savingAccount}</span>
                     )}
                   </td>
                 </tr>

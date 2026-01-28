@@ -3,17 +3,69 @@ import "./CategoryBreakdown.css";
 
 const formatCurrency = (value) => `${value.toFixed(2)} EUR`;
 
-export default function CategoryBreakdown({ categories, totalOutcome, onCategoryClick }) {
+export default function CategoryBreakdown({
+  categories,
+  totalOutcome,
+  onCategoryClick,
+  language = "fr",
+}) {
+  const labels = {
+    fr: {
+      title: "Dépenses par catégorie",
+      empty: "Aucune dépense",
+      transactions: "transactions",
+      categories: {
+        Restaurant: "Restaurant",
+        Groceries: "Courses",
+        Transport: "Transport",
+        Shopping: "Shopping",
+        Bills: "Factures",
+        Utilities: "Services",
+        Housing: "Logement",
+        Health: "Santé",
+        Entertainment: "Loisirs",
+        Travel: "Voyage",
+        Subscriptions: "Abonnements",
+        Other: "Autre",
+        Transfer: "Virement",
+        Saving: "Épargne",
+      },
+    },
+    en: {
+      title: "Expenses by Category",
+      empty: "No expense data",
+      transactions: "transactions",
+      categories: {
+        Restaurant: "Restaurant",
+        Groceries: "Groceries",
+        Transport: "Transport",
+        Shopping: "Shopping",
+        Bills: "Bills",
+        Utilities: "Utilities",
+        Housing: "Housing",
+        Health: "Health",
+        Entertainment: "Entertainment",
+        Travel: "Travel",
+        Subscriptions: "Subscriptions",
+        Other: "Other",
+        Transfer: "Transfer",
+        Saving: "Saving",
+      },
+    },
+  };
+  const t = labels[language] || labels.fr;
+
   if (!categories || categories.length === 0) {
-    return <div className="chart-empty">No expense data</div>;
+    return <div className="chart-empty">{t.empty}</div>;
   }
 
   return (
     <div className="category-breakdown">
-      <h4 className="chart-title">Expenses by Category</h4>
+      <h4 className="chart-title">{t.title}</h4>
       <div className="category-bars">
         {categories.map((cat) => {
           const percentage = totalOutcome > 0 ? (cat.total / totalOutcome) * 100 : 0;
+          const name = t.categories[cat.name] || cat.name;
           return (
             <div
               key={cat.name}
@@ -21,7 +73,7 @@ export default function CategoryBreakdown({ categories, totalOutcome, onCategory
               onClick={() => onCategoryClick?.(cat.name)}
             >
               <div className="category-bar-header">
-                <span className="category-name">{cat.name}</span>
+                <span className="category-name">{name}</span>
                 <div className="category-values">
                   <span className="category-amount">{formatCurrency(cat.total)}</span>
                   <span className="category-percentage">{percentage.toFixed(1)}%</span>
@@ -33,7 +85,9 @@ export default function CategoryBreakdown({ categories, totalOutcome, onCategory
                   style={{ width: `${Math.min(percentage, 100)}%` }}
                 />
               </div>
-              <span className="category-count">{cat.count} transactions</span>
+              <span className="category-count">
+                {cat.count} {t.transactions}
+              </span>
             </div>
           );
         })}

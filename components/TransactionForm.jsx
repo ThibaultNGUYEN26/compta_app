@@ -25,7 +25,68 @@ export default function TransactionForm({
   currentAccounts = [],
   savingAccounts = [],
   selectedCurrentAccount,
+  language = "fr",
 }) {
+  const labels = {
+    fr: {
+      dateLabel: "Date",
+      namePlaceholder: "Nom de la transaction",
+      amountPlaceholder: "Montant",
+      typeLabel: "Type",
+      outcome: "Dépense",
+      income: "Revenu",
+      prelevement: "Prélèvement",
+      cancel: "Annuler",
+      update: "Mettre à jour",
+      add: "Ajouter",
+      categories: {
+        Restaurant: "Restaurant",
+        Groceries: "Courses",
+        Transport: "Transport",
+        Shopping: "Shopping",
+        Bills: "Factures",
+        Utilities: "Services",
+        Housing: "Logement",
+        Health: "Santé",
+        Entertainment: "Loisirs",
+        Travel: "Voyage",
+        Subscriptions: "Abonnements",
+        Other: "Autre",
+        Transfer: "Virement",
+        Saving: "Épargne",
+      },
+    },
+    en: {
+      dateLabel: "Date",
+      namePlaceholder: "Transaction name",
+      amountPlaceholder: "Amount",
+      typeLabel: "Type",
+      outcome: "Outcome",
+      income: "Income",
+      prelevement: "Direct Debit",
+      cancel: "Cancel",
+      update: "Update",
+      add: "Add",
+      categories: {
+        Restaurant: "Restaurant",
+        Groceries: "Groceries",
+        Transport: "Transport",
+        Shopping: "Shopping",
+        Bills: "Bills",
+        Utilities: "Utilities",
+        Housing: "Housing",
+        Health: "Health",
+        Entertainment: "Entertainment",
+        Travel: "Travel",
+        Subscriptions: "Subscriptions",
+        Other: "Other",
+        Transfer: "Transfer",
+        Saving: "Saving",
+      },
+    },
+  };
+  const t = labels[language] || labels.fr;
+
   const today = new Date().toISOString().slice(0, 10);
   const safeInitial = initialValues || {};
   const [name, setName] = useState("");
@@ -153,13 +214,13 @@ export default function TransactionForm({
       />
       <input
         type="text"
-        placeholder="Transaction name"
+        placeholder={t.namePlaceholder}
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
       <input
         type="number"
-        placeholder="Amount"
+        placeholder={t.amountPlaceholder}
         value={amount}
         min="0"
         step="0.01"
@@ -181,7 +242,7 @@ export default function TransactionForm({
       >
         {categories.map((cat) => (
           <option key={cat} value={cat}>
-            {cat}
+            {t.categories[cat] || cat}
           </option>
         ))}
       </select>
@@ -212,11 +273,11 @@ export default function TransactionForm({
         </select>
       )}
       <div className="transaction-type">
-        <span className="transaction-type-label">Type</span>
+        <span className="transaction-type-label">{t.typeLabel}</span>
         <label className="type-toggle">
           <span className="type-toggle-side">
             <span className={type === "expense" ? "is-active" : ""}>
-              Outcome
+              {t.outcome}
             </span>
           </span>
           <input
@@ -230,7 +291,7 @@ export default function TransactionForm({
           </span>
           <span className="type-toggle-side">
             <span className={type === "income" ? "is-active" : ""}>
-              Income
+              {t.income}
             </span>
           </span>
         </label>
@@ -249,7 +310,7 @@ export default function TransactionForm({
         <span className="prelevement-pill" aria-hidden="true">
           <span className="prelevement-dot" />
         </span>
-        <span className="prelevement-text">Prelevement</span>
+        <span className="prelevement-text">{t.prelevement}</span>
       </label>
       <div className="transaction-actions">
         {onCancel && (
@@ -258,11 +319,11 @@ export default function TransactionForm({
             className="form-secondary"
             onClick={onCancel}
           >
-            Cancel
+            {t.cancel}
           </button>
         )}
         <button type="submit">
-          {initialValues ? "Update" : "Add"}
+          {initialValues ? t.update : t.add}
         </button>
       </div>
     </form>

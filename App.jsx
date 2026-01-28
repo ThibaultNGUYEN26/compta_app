@@ -14,11 +14,33 @@ export default function App() {
   ]);
   const [savingAccounts, setSavingAccounts] = useState([]);
   const [savingLinks, setSavingLinks] = useState({});
+  const [language, setLanguage] = useState("fr");
+  const [settingsMeta, setSettingsMeta] = useState({});
   const [showAccounts, setShowAccounts] = useState(false);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [selectedCurrentAccount, setSelectedCurrentAccount] = useState(
     "Current account"
   );
+
+  const settingsLabels = {
+    fr: { title: "Comptes", close: "Fermer" },
+    en: { title: "Accounts", close: "Close" },
+  };
+  const settingsText = settingsLabels[language] || settingsLabels.fr;
+
+  const homeLabels = {
+    fr: {
+      newTransaction: "Nouvelle transaction",
+      account: "Compte",
+      recentActivity: "Activité récente",
+    },
+    en: {
+      newTransaction: "New transaction",
+      account: "Account",
+      recentActivity: "Recent activity",
+    },
+  };
+  const homeText = homeLabels[language] || homeLabels.fr;
 
   useEffect(() => {
     let cancelled = false;
@@ -26,28 +48,29 @@ export default function App() {
       if (!window.comptaApi?.loadSettings) return;
       const settings = await window.comptaApi.loadSettings();
       if (cancelled || !settings?.accounts) return;
+      const { accounts, ...rest } = settings;
       setCurrentAccounts(
-        Array.isArray(settings.accounts.current) &&
-          settings.accounts.current.length
-          ? settings.accounts.current
+        Array.isArray(accounts.current) && accounts.current.length
+          ? accounts.current
           : ["Current account"]
       );
       setSavingAccounts(
-        Array.isArray(settings.accounts.saving)
-          ? settings.accounts.saving
+        Array.isArray(accounts.saving)
+          ? accounts.saving
           : []
       );
       setSavingLinks(
-        settings.accounts.savingLinks &&
-          typeof settings.accounts.savingLinks === "object"
-          ? settings.accounts.savingLinks
+        accounts.savingLinks &&
+          typeof accounts.savingLinks === "object"
+          ? accounts.savingLinks
           : {}
       );
+      setLanguage(rest.language || "fr");
+      setSettingsMeta(rest);
       setSelectedCurrentAccount((prev) => {
         const nextCurrent =
-          Array.isArray(settings.accounts.current) &&
-          settings.accounts.current.length
-            ? settings.accounts.current
+          Array.isArray(accounts.current) && accounts.current.length
+            ? accounts.current
             : ["Current account"];
         return nextCurrent.includes(prev) ? prev : nextCurrent[0];
       });
@@ -59,9 +82,16 @@ export default function App() {
     };
   }, []);
 
-  const persistAccounts = (nextCurrent, nextSaving, nextSavingLinks) => {
+  const persistAccounts = (
+    nextCurrent,
+    nextSaving,
+    nextSavingLinks,
+    nextLanguage
+  ) => {
     if (!window.comptaApi?.saveSettings) return;
     return window.comptaApi.saveSettings({
+      ...settingsMeta,
+      language: nextLanguage,
       accounts: {
         current: nextCurrent,
         saving: nextSaving,
@@ -72,8 +102,8 @@ export default function App() {
 
   useEffect(() => {
     if (!accountsLoaded) return;
-    persistAccounts(currentAccounts, savingAccounts, savingLinks);
-  }, [accountsLoaded, currentAccounts, savingAccounts, savingLinks]);
+    persistAccounts(currentAccounts, savingAccounts, savingLinks, language);
+  }, [accountsLoaded, currentAccounts, savingAccounts, savingLinks, language, settingsMeta]);
 
   useEffect(() => {
     if (!currentAccounts.length) return;
@@ -265,7 +295,11 @@ export default function App() {
           <h1 className="app-title">Compta</h1>
         </div>
         <div className="app-actions">
-          <Navigation currentView={view} onViewChange={setView} />
+          <Navigation
+            currentView={view}
+            onViewChange={setView}
+            language={language}
+          />
           <button
             type="button"
             className="settings-button"
@@ -280,19 +314,20 @@ export default function App() {
         <div className="modal-overlay" role="dialog" aria-modal="true">
           <div className="modal-card panel">
             <div className="modal-header">
-              <h2 className="panel-title">Accounts</h2>
+              <h2 className="panel-title">{settingsText.title}</h2>
               <button
                 type="button"
                 className="modal-close"
                 onClick={() => setShowAccounts(false)}
               >
-                Close
+                {settingsText.close}
               </button>
             </div>
             <AccountManager
               currentAccounts={currentAccounts}
               savingAccounts={savingAccounts}
               savingLinks={savingLinks}
+              language={language}
               onAddCurrent={addCurrentAccount}
               onAddSaving={addSavingAccount}
               onRenameCurrent={renameCurrentAccount}
@@ -300,6 +335,7 @@ export default function App() {
               onDeleteCurrent={deleteCurrentAccount}
               onDeleteSaving={deleteSavingAccount}
               onLinkSaving={linkSavingAccount}
+              onLanguageChange={setLanguage}
             />
           </div>
         </div>
@@ -307,10 +343,10 @@ export default function App() {
       {view === "home" ? (
         <main className="app-grid">
           <section className="panel panel-form">
-            <h2 className="panel-title">New transaction</h2>
+            <h2 className="panel-title">{homeText.newTransaction}</h2>
             <div className="panel-account-row">
               <label className="panel-account-select">
-                <span>Account</span>
+                <span>{homeText.account}</span>
                 <select
                   value={selectedCurrentAccount}
                   onChange={(e) => setSelectedCurrentAccount(e.target.value)}
@@ -330,17 +366,19 @@ export default function App() {
               currentAccounts={currentAccounts}
               savingAccounts={savingAccounts}
               selectedCurrentAccount={selectedCurrentAccount}
+              language={language}
             />
           </section>
           <section className="panel panel-list">
-            <h2 className="panel-title">Recent activity</h2>
+            <h2 className="panel-title">{homeText.recentActivity}</h2>
             <TransactionList
               transactions={transactions}
-              limit={4}
+              limit={5}
               onUpdate={handleUpdate}
               onDelete={handleDelete}
               currentAccounts={currentAccounts}
               savingAccounts={savingAccounts}
+              language={language}
             />
           </section>
         </main>
@@ -352,6 +390,7 @@ export default function App() {
           currentAccounts={currentAccounts}
           savingAccounts={savingAccounts}
           savingLinks={savingLinks}
+          language={language}
         />
       ) : (
         <main className="app-stats">
@@ -361,6 +400,7 @@ export default function App() {
               currentAccounts={currentAccounts}
               savingAccounts={savingAccounts}
               savingLinks={savingLinks}
+              language={language}
             />
           </section>
         </main>

@@ -9,6 +9,27 @@
   color: var(--muted);
 }
 
+.account-settings-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.account-settings-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.account-settings-label select {
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  padding: 4px 8px;
+  font: inherit;
+  background: #ffffff;
+}
+
 .account-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -114,9 +135,13 @@
 .account-actions {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
-  width: 100%;
+  width: auto;
+}
+
+.account-manager.is-en .account-actions {
+  margin-left: auto;
 }
 
 .account-form input {

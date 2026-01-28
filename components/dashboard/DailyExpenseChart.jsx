@@ -1,7 +1,35 @@
 import React, { useState } from "react";
 import "./DailyExpenseChart.css";
 
-export default function DailyExpenseChart({ dailyExpenses, selectedYear, selectedMonth }) {
+export default function DailyExpenseChart({
+  dailyExpenses,
+  selectedYear,
+  selectedMonth,
+  language = "fr",
+}) {
+  const labels = {
+    fr: {
+      title: "Dépenses quotidiennes",
+      empty: "Aucune dépense pour cette période.",
+      max: "Max",
+      day: "Jour",
+      total: "Total",
+      average: "Moyenne",
+      days: "Jours",
+      locale: "fr-FR",
+    },
+    en: {
+      title: "Daily Expenses",
+      empty: "No expense data for this period.",
+      max: "Max",
+      day: "Day",
+      total: "Total",
+      average: "Average",
+      days: "Days",
+      locale: "en-US",
+    },
+  };
+  const t = labels[language] || labels.fr;
   const [hoveredPoint, setHoveredPoint] = useState(null);
 
   const hasMonthSelected = selectedMonth !== "" && selectedMonth !== null && selectedMonth !== undefined;
@@ -13,8 +41,8 @@ export default function DailyExpenseChart({ dailyExpenses, selectedYear, selecte
   if (!dailyExpenses || dailyExpenses.length === 0) {
     return (
       <div className="daily-expense-chart">
-        <h3 className="chart-title">Daily Expenses</h3>
-        <p className="chart-empty">No expense data for this period.</p>
+        <h3 className="chart-title">{t.title}</h3>
+        <p className="chart-empty">{t.empty}</p>
       </div>
     );
   }
@@ -33,7 +61,7 @@ export default function DailyExpenseChart({ dailyExpenses, selectedYear, selecte
     minDay = 1;
     maxDay = daysInMonth;
     dayRange = maxDay - minDay;
-    monthName = getMonthName(month);
+    monthName = getMonthName(month, t.locale);
     dateRange = `${monthName} ${selectedYear}`;
   } else {
     // All months - use actual day range from data
@@ -61,10 +89,12 @@ export default function DailyExpenseChart({ dailyExpenses, selectedYear, selecte
 
   return (
     <div className="daily-expense-chart">
-      <h3 className="chart-title">Daily Expenses</h3>
+      <h3 className="chart-title">{t.title}</h3>
       <div className="chart-info">
         <span className="chart-period">{dateRange}</span>
-        <span className="chart-max">Max: €{maxExpense.toFixed(2)}</span>
+        <span className="chart-max">
+          {t.max}: €{maxExpense.toFixed(2)}
+        </span>
       </div>
       
       <div className="chart-container">
@@ -93,7 +123,9 @@ export default function DailyExpenseChart({ dailyExpenses, selectedYear, selecte
         {dailyExpenses.map((d) => {
           const x = chartPaddingX + ((d.day - minDay) / dayRange) * usableWidth;
           const y = chartBottom - ((d.amount / maxExpense) * usableHeight);
-          const displayDate = hasMonthSelected ? `${monthName} ${d.day}` : `Day ${d.day}`;
+          const displayDate = hasMonthSelected
+            ? `${monthName} ${d.day}`
+            : `${t.day} ${d.day}`;
           return (
             <div
               key={d.day}
@@ -123,27 +155,31 @@ export default function DailyExpenseChart({ dailyExpenses, selectedYear, selecte
         )}
         </div>
         
-        <div className="chart-x-axis">
-          <span>{hasMonthSelected ? `${monthName} 1` : `Day ${minDay}`}</span>
-          <span>{hasMonthSelected ? `${monthName} ${maxDay}` : `Day ${maxDay}`}</span>
-        </div>
+      <div className="chart-x-axis">
+          <span>
+            {hasMonthSelected ? `${monthName} 1` : `${t.day} ${minDay}`}
+          </span>
+          <span>
+            {hasMonthSelected ? `${monthName} ${maxDay}` : `${t.day} ${maxDay}`}
+          </span>
+      </div>
       </div>
       
       <div className="chart-summary">
         <div className="summary-item">
-          <span className="summary-label">Total</span>
+          <span className="summary-label">{t.total}</span>
           <span className="summary-value expense">
             €{totalAmount.toFixed(2)}
           </span>
         </div>
         <div className="summary-item">
-          <span className="summary-label">Average</span>
+          <span className="summary-label">{t.average}</span>
           <span className="summary-value">
             €{(totalAmount / dailyExpenses.length).toFixed(2)}
           </span>
         </div>
         <div className="summary-item">
-          <span className="summary-label">Days</span>
+          <span className="summary-label">{t.days}</span>
           <span className="summary-value">{dailyExpenses.length}</span>
         </div>
       </div>
@@ -151,11 +187,9 @@ export default function DailyExpenseChart({ dailyExpenses, selectedYear, selecte
   );
 }
 
-function getMonthName(month) {
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
+function getMonthName(month, locale) {
   const monthIndex = Number(month);
-  return months[monthIndex] || "";
+  if (!Number.isFinite(monthIndex)) return "";
+  const date = new Date(2020, monthIndex, 1);
+  return date.toLocaleString(locale || "en-US", { month: "long" });
 }

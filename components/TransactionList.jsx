@@ -26,7 +26,72 @@ export default function TransactionList({
   currentAccounts = [],
   savingAccounts = [],
   scope,
+  language = "fr",
 }) {
+  const labels = {
+    fr: {
+      empty: "Aucune transaction pour le moment.",
+      namePlaceholder: "Nom de la transaction",
+      amountPlaceholder: "Montant",
+      outcome: "Dépense",
+      income: "Revenu",
+      prelevement: "Prélèvement",
+      cancel: "Annuler",
+      delete: "Supprimer",
+      save: "Enregistrer",
+      edit: "Modifier",
+      current: "Courant",
+      savings: "Épargne",
+      categories: {
+        Restaurant: "Restaurant",
+        Groceries: "Courses",
+        Transport: "Transport",
+        Shopping: "Shopping",
+        Bills: "Factures",
+        Utilities: "Services",
+        Housing: "Logement",
+        Health: "Santé",
+        Entertainment: "Loisirs",
+        Travel: "Voyage",
+        Subscriptions: "Abonnements",
+        Other: "Autre",
+        Transfer: "Virement",
+        Saving: "Épargne",
+      },
+    },
+    en: {
+      empty: "No transactions yet.",
+      namePlaceholder: "Transaction name",
+      amountPlaceholder: "Amount",
+      outcome: "Outcome",
+      income: "Income",
+      prelevement: "Direct Debit",
+      cancel: "Cancel",
+      delete: "Delete",
+      save: "Save",
+      edit: "Edit",
+      current: "Current",
+      savings: "Savings",
+      categories: {
+        Restaurant: "Restaurant",
+        Groceries: "Groceries",
+        Transport: "Transport",
+        Shopping: "Shopping",
+        Bills: "Bills",
+        Utilities: "Utilities",
+        Housing: "Housing",
+        Health: "Health",
+        Entertainment: "Entertainment",
+        Travel: "Travel",
+        Subscriptions: "Subscriptions",
+        Other: "Other",
+        Transfer: "Transfer",
+        Saving: "Saving",
+      },
+    },
+  };
+  const i18n = labels[language] || labels.fr;
+
   const [editingId, setEditingId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [formState, setFormState] = useState({
@@ -69,7 +134,7 @@ export default function TransactionList({
 
   if (!transactions.length) {
     return (
-      <div className="transaction-list-empty">No transactions yet.</div>
+      <div className="transaction-list-empty">{i18n.empty}</div>
     );
   }
 
@@ -152,7 +217,7 @@ export default function TransactionList({
     if (!value) return "";
     const dt = new Date(value);
     if (Number.isNaN(dt.getTime())) return "";
-    return dt.toLocaleDateString();
+    return dt.toLocaleDateString(language === "fr" ? "fr-FR" : "en-US");
   };
 
   const formatAmount = (value) => {
@@ -187,7 +252,7 @@ export default function TransactionList({
                       name: e.target.value,
                     }))
                   }
-                  placeholder="Transaction name"
+                  placeholder={i18n.namePlaceholder}
                 />
                 <input
                   type="number"
@@ -200,7 +265,7 @@ export default function TransactionList({
                   }
                   min="0"
                   step="0.01"
-                  placeholder="Amount"
+                  placeholder={i18n.amountPlaceholder}
                 />
               </div>
               <div className="edit-row">
@@ -242,7 +307,7 @@ export default function TransactionList({
                 >
                   {categories.map((cat) => (
                     <option key={cat} value={cat}>
-                      {cat}
+                      {i18n.categories[cat] || cat}
                     </option>
                   ))}
                 </select>
@@ -293,7 +358,7 @@ export default function TransactionList({
                     <span
                       className={formState.type === "expense" ? "is-active" : ""}
                     >
-                      Outcome
+                      {i18n.outcome}
                     </span>
                   </span>
                   <input
@@ -314,7 +379,7 @@ export default function TransactionList({
                     <span
                       className={formState.type === "income" ? "is-active" : ""}
                     >
-                      Income
+                      {i18n.income}
                     </span>
                   </span>
                 </label>
@@ -335,18 +400,18 @@ export default function TransactionList({
                   <span className="edit-prelevement-pill" aria-hidden="true">
                     <span className="edit-prelevement-dot" />
                   </span>
-                  <span className="edit-prelevement-text">Prelevement</span>
+                  <span className="edit-prelevement-text">{i18n.prelevement}</span>
                 </label>
               </div>
               <div className="edit-actions">
                 <button type="button" onClick={cancelEdit}>
-                  Cancel
+                  {i18n.cancel}
                 </button>
                 <button type="button" className="edit-delete" onClick={deleteEdit}>
-                  Delete
+                  {i18n.delete}
                 </button>
                 <button type="button" onClick={saveEdit}>
-                  Save
+                  {i18n.save}
                 </button>
               </div>
             </div>
@@ -373,9 +438,11 @@ export default function TransactionList({
                 </div>
               </div>
               <div className="transaction-meta">
-                <span className="transaction-category">{t.category}</span>
+                <span className="transaction-category">
+                  {i18n.categories[t.category] || t.category}
+                </span>
                 {t.isPrelevement && (
-                  <span className="transaction-prelevement">Prelevement</span>
+                  <span className="transaction-prelevement">{i18n.prelevement}</span>
                 )}
                 {!t.isPrelevement && (
                   <span
@@ -383,7 +450,7 @@ export default function TransactionList({
                       displayType === "income" ? "is-income" : "is-expense"
                     }`}
                   >
-                    {displayType === "income" ? "Income" : "Outcome"}
+                    {displayType === "income" ? i18n.income : i18n.outcome}
                   </span>
                 )}
                 {t.category !== "Saving" && t.category !== "Transfer" && (t.currentAccount || t.accountName) && (
@@ -394,15 +461,15 @@ export default function TransactionList({
                 {t.category === "Saving" && (
                   <span className="transaction-transfer">
                     {t.type === "income"
-                      ? `${t.savingAccount || t.accountName || "Savings"} → ${t.currentAccount || currentAccounts[0] || "Current"}`
-                      : `${t.currentAccount || currentAccounts[0] || "Current"} → ${t.savingAccount || t.accountName || "Savings"}`}
+                      ? `${t.savingAccount || t.accountName || i18n.savings} → ${t.currentAccount || currentAccounts[0] || i18n.current}`
+                      : `${t.currentAccount || currentAccounts[0] || i18n.current} → ${t.savingAccount || t.accountName || i18n.savings}`}
                   </span>
                 )}
                 {t.category === "Transfer" && (
                   <span className="transaction-transfer">
                     {t.type === "income"
-                      ? `${t.transferAccount || "Current"} → ${t.currentAccount || currentAccounts[0] || "Current"}`
-                      : `${t.currentAccount || currentAccounts[0] || "Current"} → ${t.transferAccount || "Current"}`}
+                      ? `${t.transferAccount || i18n.current} → ${t.currentAccount || currentAccounts[0] || i18n.current}`
+                      : `${t.currentAccount || currentAccounts[0] || i18n.current} → ${t.transferAccount || i18n.current}`}
                   </span>
                 )}
                 {onUpdate && (
@@ -411,7 +478,7 @@ export default function TransactionList({
                     className="transaction-edit"
                     onClick={() => startEdit(t)}
                   >
-                    Edit
+                    {i18n.edit}
                   </button>
                 )}
               </div>
@@ -423,4 +490,3 @@ export default function TransactionList({
     </ul>
   );
 }
-

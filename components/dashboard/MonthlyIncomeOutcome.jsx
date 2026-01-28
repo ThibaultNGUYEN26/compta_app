@@ -4,12 +4,33 @@ import { isRealIncome, isRealOutcome } from "../../utils/dashboardUtils";
 
 const formatCurrency = (value) => `${value.toFixed(0)} EUR`;
 
-export default function MonthlyIncomeOutcome({ transactions }) {
+export default function MonthlyIncomeOutcome({ transactions, language = "fr" }) {
+  const labels = {
+    fr: {
+      title: "Revenus vs Dépenses",
+      noData: "Aucune donnée",
+      income: "Revenus",
+      expenses: "Dépenses",
+      directDebit: "Prélèvement",
+      total: "Total",
+      aria: "Revenus vs Dépenses",
+    },
+    en: {
+      title: "Incomes vs Expenses",
+      noData: "No data",
+      income: "Income",
+      expenses: "Expenses",
+      directDebit: "Direct Debit",
+      total: "Total",
+      aria: "Incomes vs Expenses",
+    },
+  };
+  const t = labels[language] || labels.fr;
   const [hoveredSegment, setHoveredSegment] = useState(null);
   const donutRef = useRef(null);
 
   if (!transactions || transactions.length === 0) {
-    return <div className="chart-empty">No data</div>;
+    return <div className="chart-empty">{t.noData}</div>;
   }
 
   const totals = transactions.reduce(
@@ -34,29 +55,29 @@ export default function MonthlyIncomeOutcome({ transactions }) {
   if (total <= 0) {
     return (
       <div className="monthly-income-outcome">
-        <h4 className="chart-title">Incomes vs Expenses</h4>
-        <div className="chart-empty">No data</div>
+        <h4 className="chart-title">{t.title}</h4>
+        <div className="chart-empty">{t.noData}</div>
       </div>
     );
   }
 
   const segments = [
-    { label: "Income", value: totals.income, className: "donut-segment income" },
-    { label: "Expenses", value: expenseOnly, className: "donut-segment expense" },
-    { label: "Prelevement", value: totals.prelevement, className: "donut-segment prelevement" },
+    { label: t.income, value: totals.income, className: "donut-segment income" },
+    { label: t.expenses, value: expenseOnly, className: "donut-segment expense" },
+    { label: t.directDebit, value: totals.prelevement, className: "donut-segment prelevement" },
   ].filter((seg) => seg.value > 0);
 
   let cumulativeDash = 0;
 
   return (
     <div className="monthly-income-outcome">
-      <h4 className="chart-title">Incomes vs Expenses</h4>
+      <h4 className="chart-title">{t.title}</h4>
       <div className="monthly-donut" ref={donutRef}>
         <svg
           viewBox="0 0 100 100"
           className="donut-chart"
           role="img"
-          aria-label="Incomes vs Expenses"
+          aria-label={t.aria}
         >
           {total <= 0 && (
             <circle className="donut-track" cx="50" cy="50" r={radius} />
@@ -100,7 +121,7 @@ export default function MonthlyIncomeOutcome({ transactions }) {
             );
           })}
           <text x="50" y="50" textAnchor="middle" className="donut-center-label">
-            Total
+            {t.total}
           </text>
           <text x="50" y="60" textAnchor="middle" className="donut-center-value">
             {formatCurrency(total)}
@@ -109,15 +130,15 @@ export default function MonthlyIncomeOutcome({ transactions }) {
         <div className="monthly-legend">
           <div className="legend-item">
             <span className="legend-dot legend-dot-income"></span>
-            <span>Income</span>
+            <span>{t.income}</span>
           </div>
           <div className="legend-item">
             <span className="legend-dot legend-dot-expense"></span>
-            <span>Expenses</span>
+            <span>{t.expenses}</span>
           </div>
           <div className="legend-item">
             <span className="legend-dot legend-dot-prelevement"></span>
-            <span>Prelevement</span>
+            <span>{t.directDebit}</span>
           </div>
         </div>
         {hoveredSegment && (
