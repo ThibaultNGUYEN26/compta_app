@@ -356,7 +356,12 @@ export default function App() {
       ) : (
         <main className="app-stats">
           <section className="panel panel-stats">
-            <StatsPage transactions={transactions} />
+            <StatsPage
+              transactions={transactions}
+              currentAccounts={currentAccounts}
+              savingAccounts={savingAccounts}
+              savingLinks={savingLinks}
+            />
           </section>
         </main>
       )}

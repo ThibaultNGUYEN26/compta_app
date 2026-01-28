@@ -309,11 +309,30 @@ export const computePrelevementBreakdown = (transactions) => {
 /**
  * Compute savings by saving account
  */
-export const computeSavingsBySavingAccount = (transactions) => {
+export const computeSavingsBySavingAccount = (
+  transactions,
+  scope = {},
+  savingLinks = {}
+) => {
   const accounts = {};
+
+  const matchesScope = (transaction) => {
+    if (!scope?.type || scope.type === "all") return true;
+    if (scope.type === "saving") {
+      return !scope.name || transaction.savingAccount === scope.name;
+    }
+    if (scope.type === "current") {
+      if (!scope.name) return true;
+      const linkedCurrent = savingLinks[transaction.savingAccount];
+      if (linkedCurrent) return linkedCurrent === scope.name;
+      return transaction.currentAccount === scope.name;
+    }
+    return true;
+  };
 
   for (const t of transactions) {
     if (!isSavingTransfer(t)) continue;
+    if (!matchesScope(t)) continue;
 
     const account = t.savingAccount || "Unknown";
     if (!accounts[account]) {

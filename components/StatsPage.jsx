@@ -16,38 +16,20 @@ import {
 } from "../utils/dashboardUtils";
 import "./StatsPage.css";
 
-export default function StatsPage({ transactions }) {
-  const [settingsAccounts, setSettingsAccounts] = useState({
-    current: [],
-    saving: [],
-    savingLinks: {},
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadSettings = async () => {
-      if (!window.comptaApi?.loadSettings) return;
-      const settings = await window.comptaApi.loadSettings();
-      if (cancelled || !settings?.accounts) return;
-      setSettingsAccounts({
-        current: Array.isArray(settings.accounts.current)
-          ? settings.accounts.current
-          : [],
-        saving: Array.isArray(settings.accounts.saving)
-          ? settings.accounts.saving
-          : [],
-        savingLinks:
-          settings.accounts.savingLinks &&
-          typeof settings.accounts.savingLinks === "object"
-            ? settings.accounts.savingLinks
-            : {},
-      });
+export default function StatsPage({
+  transactions,
+  currentAccounts = [],
+  savingAccounts = [],
+  savingLinks = {},
+}) {
+  const settingsAccounts = useMemo(() => {
+    return {
+      current: Array.isArray(currentAccounts) ? currentAccounts : [],
+      saving: Array.isArray(savingAccounts) ? savingAccounts : [],
+      savingLinks:
+        savingLinks && typeof savingLinks === "object" ? savingLinks : {},
     };
-    loadSettings();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  }, [currentAccounts, savingAccounts, savingLinks]);
 
   const accountLists = useMemo(() => {
     const currentSet = new Set(settingsAccounts.current || []);
@@ -96,7 +78,7 @@ export default function StatsPage({ transactions }) {
   const scopeOptions = useMemo(() => {
     const options = [{ value: "all", label: "All current accounts" }];
     accountLists.current.forEach((name) => {
-      options.push({ value: `current::${name}`, label: `Current: ${name}` });
+      options.push({ value: `current::${name}`, label: `${name}` });
     });
     return options;
   }, [accountLists]);
@@ -109,17 +91,27 @@ export default function StatsPage({ transactions }) {
 
   const parseScope = (value) => {
     if (value === "all") return { type: "current", name: "" };
+    if (!value.includes("::")) {
+      return { type: "current", name: value || "" };
+    }
     const [type, name] = value.split("::");
-    return { type: type || "all", name: name || "" };
+    return { type: type || "current", name: name || "" };
   };
 
   const scope = useMemo(() => parseScope(scopeValue), [scopeValue]);
 
+  const dateFilteredTransactions = useMemo(() => {
+    return filterByDateRange(transactions, selectedYear, selectedMonth);
+  }, [transactions, selectedYear, selectedMonth]);
+
   const filteredTransactions = useMemo(() => {
-    let filtered = filterByDateRange(transactions, selectedYear, selectedMonth);
-    filtered = filterByScope(filtered, scope.type, scope.name, settingsAccounts.savingLinks);
-    return filtered;
-  }, [transactions, selectedYear, selectedMonth, scope, settingsAccounts.savingLinks]);
+    return filterByScope(
+      dateFilteredTransactions,
+      scope.type,
+      scope.name,
+      settingsAccounts.savingLinks
+    );
+  }, [dateFilteredTransactions, scope, settingsAccounts.savingLinks]);
 
   const kpis = useMemo(() => {
     return computeKpis(filteredTransactions, accountLists, scope);
@@ -130,8 +122,12 @@ export default function StatsPage({ transactions }) {
   }, [filteredTransactions]);
 
   const savingsByAccount = useMemo(() => {
-    return computeSavingsBySavingAccount(filteredTransactions);
-  }, [filteredTransactions]);
+    return computeSavingsBySavingAccount(
+      dateFilteredTransactions,
+      scope,
+      settingsAccounts.savingLinks
+    );
+  }, [dateFilteredTransactions, scope, settingsAccounts.savingLinks]);
 
   const dailyExpenses = useMemo(() => {
     return computeDailyExpenses(filteredTransactions);
