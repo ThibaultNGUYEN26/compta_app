@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "./TransactionList.css";
 
 const categories = [
@@ -14,6 +14,7 @@ const categories = [
   "Travel",
   "Subscriptions",
   "Other",
+  "Transfer",
   "Saving",
 ];
 
@@ -24,6 +25,7 @@ export default function TransactionList({
   onDelete,
   currentAccounts = [],
   savingAccounts = [],
+  scope,
 }) {
   const [editingId, setEditingId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
@@ -37,6 +39,7 @@ export default function TransactionList({
     accountName: "",
     currentAccount: "",
     savingAccount: "",
+    transferAccount: "",
   });
 
   const visibleTransactions =
@@ -45,6 +48,24 @@ export default function TransactionList({
     () => transactions.find((item) => item.id === editingId),
     [transactions, editingId]
   );
+
+  useEffect(() => {
+    if (formState.category !== "Transfer") return;
+    if (!currentAccounts.length) return;
+    if (formState.transferAccount === formState.currentAccount) {
+      const fallback =
+        currentAccounts.find((acc) => acc !== formState.currentAccount) || "";
+      setFormState((prev) => ({
+        ...prev,
+        transferAccount: fallback,
+      }));
+    }
+  }, [
+    formState.category,
+    formState.currentAccount,
+    formState.transferAccount,
+    currentAccounts,
+  ]);
 
   if (!transactions.length) {
     return (
@@ -72,6 +93,10 @@ export default function TransactionList({
         transaction.savingAccount ||
         savingAccounts[0] ||
         "",
+      transferAccount:
+        transaction.transferAccount ||
+        currentAccounts[0] ||
+        "",
       date: transaction.date
         ? new Date(transaction.date).toISOString().slice(0, 10)
         : "",
@@ -93,10 +118,12 @@ export default function TransactionList({
     const parsedAmount = parseFloat(formState.amount);
     if (!formState.name || Number.isNaN(parsedAmount)) return;
     if (formState.category === "Saving" && !formState.savingAccount) return;
+    if (formState.category === "Transfer" && !formState.transferAccount) return;
     const finalType = formState.isPrelevement ? "expense" : formState.type;
     const resolvedCurrent =
       formState.currentAccount || currentAccounts[0] || "Current account";
     const resolvedSaving = formState.savingAccount || savingAccounts[0] || "";
+    const resolvedTransfer = formState.transferAccount || currentAccounts[0] || "";
     const accountName =
       formState.category === "Saving" ? resolvedSaving : resolvedCurrent;
     const accountType = formState.category === "Saving" ? "saving" : "current";
@@ -106,9 +133,11 @@ export default function TransactionList({
       amount: Math.abs(parsedAmount),
       category: formState.category,
       type: finalType,
-      isPrelevement: formState.isPrelevement,
+      isPrelevement:
+        formState.category === "Transfer" ? false : formState.isPrelevement,
       currentAccount: resolvedCurrent,
       savingAccount: resolvedSaving,
+      transferAccount: resolvedTransfer,
       accountType,
       accountName,
       date: formState.date
@@ -134,12 +163,18 @@ export default function TransactionList({
 
   return (
     <ul className="transaction-list">
-      {visibleTransactions.map((t, i) => (
-        <li 
-          key={t.id || i} 
-          className={`transaction-item ${selectedId === t.id ? 'transaction-item-selected' : ''}`}
-          onClick={() => setSelectedId(selectedId === t.id ? null : t.id)}
-        >
+      {visibleTransactions.map((t, i) => {
+        let displayType = t.type;
+        if (t.category === "Transfer" && scope?.type === "current" && scope?.name) {
+          if (t.transferAccount === scope.name) displayType = "income";
+          if (t.currentAccount === scope.name) displayType = "expense";
+        }
+        return (
+          <li 
+            key={t.id || i} 
+            className={`transaction-item ${selectedId === t.id ? 'transaction-item-selected' : ''}`}
+            onClick={() => setSelectedId(selectedId === t.id ? null : t.id)}
+          >
           {editingId === t.id ? (
             <div className="transaction-edit-form">
               <div className="edit-row">
@@ -195,6 +230,12 @@ export default function TransactionList({
                           next === "Saving"
                             ? savingAccounts[0] || ""
                             : prev.savingAccount,
+                        transferAccount:
+                          next === "Transfer"
+                            ? currentAccounts[0] || ""
+                            : prev.transferAccount,
+                        isPrelevement:
+                          next === "Transfer" ? false : prev.isPrelevement,
                       };
                     })
                   }
@@ -222,6 +263,27 @@ export default function TransactionList({
                         {account}
                       </option>
                     ))}
+                  </select>
+                </div>
+              )}
+              {formState.category === "Transfer" && (
+                <div className="edit-row">
+                  <select
+                    value={formState.transferAccount}
+                    onChange={(e) =>
+                      setFormState((prev) => ({
+                        ...prev,
+                        transferAccount: e.target.value,
+                      }))
+                    }
+                  >
+                    {(currentAccounts.length ? currentAccounts : ["Current account"])
+                      .filter((account) => account !== formState.currentAccount)
+                      .map((account) => (
+                        <option key={account} value={account}>
+                          {account}
+                        </option>
+                      ))}
                   </select>
                 </div>
               )}
@@ -268,6 +330,7 @@ export default function TransactionList({
                         type: next ? "expense" : prev.type,
                       }));
                     }}
+                    disabled={formState.category === "Transfer"}
                   />
                   <span className="edit-prelevement-pill" aria-hidden="true">
                     <span className="edit-prelevement-dot" />
@@ -296,12 +359,12 @@ export default function TransactionList({
                     className={`transaction-amount ${
                       t.isPrelevement
                         ? "is-prelevement"
-                        : t.type === "income"
+                        : displayType === "income"
                         ? "is-income"
                         : "is-expense"
                     }`}
                   >
-                    {t.type === "income" ? "+" : "-"}
+                    {displayType === "income" ? "+" : "-"}
                     {formatAmount(t.amount)} EUR
                   </span>
                   <span className="transaction-date">
@@ -317,13 +380,13 @@ export default function TransactionList({
                 {!t.isPrelevement && (
                   <span
                     className={`transaction-type ${
-                      t.type === "income" ? "is-income" : "is-expense"
+                      displayType === "income" ? "is-income" : "is-expense"
                     }`}
                   >
-                    {t.type === "income" ? "Income" : "Outcome"}
+                    {displayType === "income" ? "Income" : "Outcome"}
                   </span>
                 )}
-                {t.category !== "Saving" && (t.currentAccount || t.accountName) && (
+                {t.category !== "Saving" && t.category !== "Transfer" && (t.currentAccount || t.accountName) && (
                   <span className="transaction-account">
                     {t.currentAccount || t.accountName}
                   </span>
@@ -333,6 +396,13 @@ export default function TransactionList({
                     {t.type === "income"
                       ? `${t.savingAccount || t.accountName || "Savings"} → ${t.currentAccount || currentAccounts[0] || "Current"}`
                       : `${t.currentAccount || currentAccounts[0] || "Current"} → ${t.savingAccount || t.accountName || "Savings"}`}
+                  </span>
+                )}
+                {t.category === "Transfer" && (
+                  <span className="transaction-transfer">
+                    {t.type === "income"
+                      ? `${t.transferAccount || "Current"} → ${t.currentAccount || currentAccounts[0] || "Current"}`
+                      : `${t.currentAccount || currentAccounts[0] || "Current"} → ${t.transferAccount || "Current"}`}
                   </span>
                 )}
                 {onUpdate && (
@@ -348,7 +418,9 @@ export default function TransactionList({
             </>
           )}
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 }
+

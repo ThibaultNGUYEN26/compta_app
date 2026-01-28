@@ -11,17 +11,32 @@ export const isSavingTransfer = (transaction) => {
 };
 
 /**
+ * Check if transaction is a transfer between current accounts
+ */
+export const isCurrentTransfer = (transaction) => {
+  return transaction.category === "Transfer" && transaction.transferAccount;
+};
+
+/**
  * Check if transaction is real income (external only)
  */
 export const isRealIncome = (transaction) => {
-  return transaction.type === "income" && !isSavingTransfer(transaction);
+  return (
+    transaction.type === "income" &&
+    !isSavingTransfer(transaction) &&
+    !isCurrentTransfer(transaction)
+  );
 };
 
 /**
  * Check if transaction is real outcome (external only)
  */
 export const isRealOutcome = (transaction) => {
-  return transaction.type === "expense" && !isSavingTransfer(transaction);
+  return (
+    transaction.type === "expense" &&
+    !isSavingTransfer(transaction) &&
+    !isCurrentTransfer(transaction)
+  );
 };
 
 /**
@@ -42,17 +57,22 @@ export const filterByDateRange = (transactions, year, month = null) => {
 /**
  * Filter transactions by scope (account)
  */
-export const filterByScope = (transactions, scopeType, scopeName) => {
+export const filterByScope = (transactions, scopeType, scopeName, savingLinks = {}) => {
   if (scopeType === "all") return transactions;
   
   return transactions.filter((t) => {
     if (scopeType === "current") {
-      if (!scopeName) {
-        if (t.accountType) {
-          return t.accountType !== "saving";
-        }
-        return t.category !== "Saving";
+      if (isSavingTransfer(t)) {
+        if (!scopeName) return true;
+        return t.savingAccount && savingLinks[t.savingAccount] === scopeName;
       }
+      if (isCurrentTransfer(t)) {
+        if (!scopeName) return true;
+        return (
+          t.currentAccount === scopeName || t.transferAccount === scopeName
+        );
+      }
+      if (!scopeName) return true;
       return t.currentAccount === scopeName;
     }
     if (scopeType === "saving") {
@@ -65,7 +85,7 @@ export const filterByScope = (transactions, scopeType, scopeName) => {
 /**
  * Compute KPIs following accounting rules
  */
-export const computeKpis = (transactions, accounts) => {
+export const computeKpis = (transactions, accounts, scope = {}) => {
   // Real income/outcome (external only, excluding saving transfers)
   let realIncome = 0;
   let realIncomeCount = 0;
@@ -81,10 +101,15 @@ export const computeKpis = (transactions, accounts) => {
   // Prelevements (subset of real outcome)
   let prelevTotal = 0;
   let prelevCount = 0;
+  let currentTransfersIn = 0;
+  let currentTransfersOut = 0;
+  let currentTransfersInCount = 0;
+  let currentTransfersOutCount = 0;
 
   for (const t of transactions) {
     const amount = Math.abs(Number(t.amount) || 0);
     const isTransfer = isSavingTransfer(t);
+    const isCurrentMove = isCurrentTransfer(t);
 
     if (isTransfer) {
       // Internal savings movement
@@ -95,6 +120,20 @@ export const computeKpis = (transactions, accounts) => {
         savingsWithdrawals += amount;
         savingsWithdrawalsCount++;
       }
+    } else if (isCurrentMove) {
+      if (scope?.type === "current" && scope?.name) {
+        if (t.currentAccount === scope.name) {
+          currentTransfersOut += amount;
+          currentTransfersOutCount++;
+          realOutcome += amount;
+          realOutcomeCount++;
+        } else if (t.transferAccount === scope.name) {
+          currentTransfersIn += amount;
+          currentTransfersInCount++;
+          realIncome += amount;
+          realIncomeCount++;
+        }
+      }
     } else {
       // Real external transactions
       if (t.type === "income") {
@@ -102,11 +141,12 @@ export const computeKpis = (transactions, accounts) => {
         realIncomeCount++;
       } else if (t.type === "expense") {
         realOutcome += amount;
-        realOutcomeCount++;
-        
+
         if (t.isPrelevement) {
           prelevTotal += amount;
           prelevCount++;
+        } else {
+          realOutcomeCount++;
         }
       }
     }
@@ -116,10 +156,10 @@ export const computeKpis = (transactions, accounts) => {
   const savingsNetChange = savingsDeposits - savingsWithdrawals;
   const savingsRate = realIncome > 0 ? (savingsDeposits / realIncome) * 100 : 0;
 
-  // Account balances (these would need to be calculated from initial balances + transactions)
-  // For now, we'll compute net change from transactions
-  const currentBalance = realIncome - realOutcome - savingsDeposits + savingsWithdrawals;
   const savingsBalance = savingsDeposits - savingsWithdrawals;
+  // Account balances (these would need to be calculated from initial balances + transactions)
+  // For now, current balance is (income - expense) minus savings balance.
+  const currentBalance = realIncome - realOutcome - savingsBalance;
   const totalBalance = currentBalance + savingsBalance;
 
   return {
@@ -139,6 +179,10 @@ export const computeKpis = (transactions, accounts) => {
     prelevTotal,
     prelevCount,
     savingsRate,
+    currentTransfersIn,
+    currentTransfersOut,
+    currentTransfersInCount,
+    currentTransfersOutCount,
   };
 };
 
@@ -332,6 +376,15 @@ export const computeAccountBalances = (transactions, currentAccounts, savingAcco
           currentBalances[currentAcc] += amount;
         }
       }
+    } else if (isCurrentTransfer(t)) {
+      const fromAccount = t.currentAccount || currentAccounts[0];
+      const toAccount = t.transferAccount || currentAccounts[0];
+      if (fromAccount && currentBalances[fromAccount] !== undefined) {
+        currentBalances[fromAccount] -= amount;
+      }
+      if (toAccount && currentBalances[toAccount] !== undefined) {
+        currentBalances[toAccount] += amount;
+      }
     } else {
       const account = t.currentAccount || currentAccounts[0];
       if (currentBalances[account] !== undefined) {
@@ -359,7 +412,7 @@ export const computeDailyExpenses = (transactions) => {
   
   transactions.forEach((t) => {
     // Only count real expenses (not savings transfers)
-    if (t.type !== "expense" || isSavingTransfer(t)) return;
+    if (t.type !== "expense" || isSavingTransfer(t) || isCurrentTransfer(t)) return;
     
     const date = new Date(t.date);
     if (isNaN(date.getTime())) return;

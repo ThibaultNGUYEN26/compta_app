@@ -4,12 +4,14 @@ import "./AccountManager.css";
 export default function AccountManager({
   currentAccounts,
   savingAccounts,
+  savingLinks = {},
   onAddCurrent,
   onAddSaving,
   onRenameCurrent,
   onRenameSaving,
   onDeleteCurrent,
   onDeleteSaving,
+  onLinkSaving,
 }) {
   const [currentName, setCurrentName] = useState("");
   const [savingName, setSavingName] = useState("");
@@ -181,6 +183,23 @@ export default function AccountManager({
                     </button>
                   </>
                 )}
+                <div className="account-link-row">
+                  <label className="account-link-label">
+                    Linked current
+                    <select
+                      value={savingLinks[name] || currentAccounts[0] || ""}
+                      onChange={(e) => onLinkSaving?.(name, e.target.value)}
+                    >
+                      {(currentAccounts.length ? currentAccounts : ["Current account"]).map(
+                        (account) => (
+                          <option key={account} value={account}>
+                            {account}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </label>
+                </div>
               </li>
             ))}
           </ul>

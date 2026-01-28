@@ -7,7 +7,7 @@ const formatDate = (date) => {
   return isNaN(d.getTime()) ? "" : d.toLocaleDateString();
 };
 
-export default function TransactionDrilldown({ transactions, onFilter }) {
+export default function TransactionDrilldown({ transactions, scope, onFilter }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -22,6 +22,29 @@ export default function TransactionDrilldown({ transactions, onFilter }) {
     return Array.from(cats).sort();
   }, [transactions]);
 
+  const getDisplayType = (t) => {
+    if (t.category !== "Transfer") return t.type;
+    if (scope?.type === "current" && scope?.name) {
+      if (t.transferAccount === scope.name) return "income";
+      if (t.currentAccount === scope.name) return "expense";
+    }
+    return t.type;
+  };
+
+  const getAccountLabel = (t) => {
+    if (t.category === "Transfer") {
+      const from = t.currentAccount || "Current";
+      const to = t.transferAccount || "Current";
+      return `${from} → ${to}`;
+    }
+    if (t.category === "Saving") {
+      const from = t.currentAccount || "Current";
+      const to = t.savingAccount || "Savings";
+      return `${from} → ${to}`;
+    }
+    return t.currentAccount || "";
+  };
+
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t) => {
       // Search filter
@@ -30,7 +53,7 @@ export default function TransactionDrilldown({ transactions, onFilter }) {
       }
 
       // Type filter
-      if (typeFilter !== "all" && t.type !== typeFilter) {
+      if (typeFilter !== "all" && getDisplayType(t) !== typeFilter) {
         return false;
       }
 
@@ -51,7 +74,7 @@ export default function TransactionDrilldown({ transactions, onFilter }) {
 
       return true;
     });
-  }, [transactions, searchQuery, typeFilter, categoryFilter, prelevFilter, savingFilter]);
+  }, [transactions, searchQuery, typeFilter, categoryFilter, prelevFilter, savingFilter, scope]);
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -147,10 +170,10 @@ export default function TransactionDrilldown({ transactions, onFilter }) {
                 <tr key={t.id || index}>
                   <td className="drilldown-date">{formatDate(t.date)}</td>
                   <td className="drilldown-name">{t.name}</td>
-                  <td className="drilldown-account">{t.currentAccount || ""}</td>
+                  <td className="drilldown-account">{getAccountLabel(t)}</td>
                   <td className="drilldown-category">{t.category}</td>
-                  <td className={`drilldown-amount ${t.type === "income" ? "income" : "expense"}`}>
-                    {t.type === "income" ? "+" : "-"}
+                  <td className={`drilldown-amount ${getDisplayType(t) === "income" ? "income" : "expense"}`}>
+                    {getDisplayType(t) === "income" ? "+" : "-"}
                     {formatCurrency(t.amount || 0)}
                   </td>
                   <td className="drilldown-tags">

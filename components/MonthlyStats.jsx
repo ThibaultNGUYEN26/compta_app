@@ -23,7 +23,7 @@ const getReferenceDate = (items, year, month) => {
   return getLatestDate(items);
 };
 
-export default function MonthlyStats({ transactions, selectedYear, selectedMonth }) {
+export default function MonthlyStats({ transactions, selectedYear, selectedMonth, scope }) {
   const referenceDate = useMemo(
     () => getReferenceDate(transactions, selectedYear, selectedMonth),
     [selectedMonth, selectedYear, transactions]
@@ -46,6 +46,14 @@ export default function MonthlyStats({ transactions, selectedYear, selectedMonth
       let outcome = 0;
       for (const item of items) {
         const amount = item.amount || 0;
+        if (item.category === "Transfer" && scope?.type === "current" && scope?.name) {
+          if (item.transferAccount === scope.name) {
+            income += amount;
+          } else if (item.currentAccount === scope.name) {
+            outcome += amount;
+          }
+          continue;
+        }
         if (item.type === "income") {
           income += amount;
         } else {
@@ -89,7 +97,7 @@ export default function MonthlyStats({ transactions, selectedYear, selectedMonth
           <strong className="card-value is-income">
             {formatCurrency(monthly.income)}
           </strong>
-          <span className="card-meta">All income for {monthLabel}</span>
+          <span className="card-meta">Incomes for {monthLabel}</span>
         </div>
         <div className="monthly-card">
           <span className="card-label">Month outcome</span>

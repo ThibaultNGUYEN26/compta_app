@@ -14,6 +14,7 @@ const categories = [
   "Travel",
   "Subscriptions",
   "Other",
+  "Transfer",
   "Saving",
 ];
 
@@ -36,9 +37,22 @@ export default function TransactionForm({
   const [savingAccount, setSavingAccount] = useState(
     savingAccounts[0] || ""
   );
+  const [transferAccount, setTransferAccount] = useState(
+    currentAccounts[0] || ""
+  );
   const [currentAccount, setCurrentAccount] = useState(
     selectedCurrentAccount || currentAccounts[0] || "Current account"
   );
+
+  useEffect(() => {
+    if (category !== "Transfer") return;
+    if (!currentAccounts.length) return;
+    if (transferAccount === currentAccount) {
+      const fallback =
+        currentAccounts.find((acc) => acc !== currentAccount) || "";
+      setTransferAccount(fallback);
+    }
+  }, [category, currentAccount, currentAccounts, transferAccount]);
 
   useEffect(() => {
     if (!initialValues) {
@@ -49,6 +63,7 @@ export default function TransactionForm({
       setIsPrelevement(false);
       setDate(today);
       setSavingAccount(savingAccounts[0] || "");
+      setTransferAccount(currentAccounts[0] || "");
       setCurrentAccount(
         selectedCurrentAccount || currentAccounts[0] || "Current account"
       );
@@ -69,6 +84,11 @@ export default function TransactionForm({
         savingAccounts[0] ||
         ""
     );
+    setTransferAccount(
+      safeInitial.transferAccount ||
+        currentAccounts[0] ||
+        ""
+    );
     setCurrentAccount(
       safeInitial.currentAccount ||
         selectedCurrentAccount ||
@@ -87,9 +107,11 @@ export default function TransactionForm({
     const parsedAmount = parseFloat(amount);
     if (!name || Number.isNaN(parsedAmount)) return;
     if (category === "Saving" && !savingAccount) return;
+    if (category === "Transfer" && !transferAccount) return;
     const finalType = isPrelevement ? "expense" : type;
     const resolvedCurrent = currentAccount || currentAccounts[0] || "Current account";
     const resolvedSaving = savingAccount || savingAccounts[0] || "";
+    const resolvedTransfer = transferAccount || currentAccounts[0] || "";
     const accountName =
       category === "Saving" ? resolvedSaving : resolvedCurrent;
     const accountType = category === "Saving" ? "saving" : "current";
@@ -99,9 +121,10 @@ export default function TransactionForm({
       amount: Math.abs(parsedAmount),
       category,
       type: finalType,
-      isPrelevement,
+      isPrelevement: category === "Transfer" ? false : isPrelevement,
       currentAccount: resolvedCurrent,
       savingAccount: resolvedSaving,
+      transferAccount: resolvedTransfer,
       accountType,
       accountName,
       date: new Date(date).toISOString(),
@@ -114,6 +137,7 @@ export default function TransactionForm({
       setIsPrelevement(false);
       setDate(today);
       setSavingAccount(savingAccounts[0] || "");
+      setTransferAccount(currentAccounts[0] || "");
       setCurrentAccount(
         selectedCurrentAccount || currentAccounts[0] || "Current account"
       );
@@ -149,6 +173,10 @@ export default function TransactionForm({
           if (next === "Saving") {
             setSavingAccount(savingAccounts[0] || "");
           }
+          if (next === "Transfer") {
+            setTransferAccount(currentAccounts[0] || "");
+            setIsPrelevement(false);
+          }
         }}
       >
         {categories.map((cat) => (
@@ -167,6 +195,20 @@ export default function TransactionForm({
               {account}
             </option>
           ))}
+        </select>
+      )}
+      {category === "Transfer" && (
+        <select
+          value={transferAccount}
+          onChange={(e) => setTransferAccount(e.target.value)}
+        >
+          {currentAccounts
+            .filter((account) => account !== currentAccount)
+            .map((account) => (
+              <option key={account} value={account}>
+                {account}
+              </option>
+            ))}
         </select>
       )}
       <div className="transaction-type">
@@ -202,6 +244,7 @@ export default function TransactionForm({
             setIsPrelevement(next);
             if (next) setType("expense");
           }}
+          disabled={category === "Transfer"}
         />
         <span className="prelevement-pill" aria-hidden="true">
           <span className="prelevement-dot" />

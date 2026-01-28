@@ -3,7 +3,8 @@
     "current": [
       "Current account"
     ],
-    "saving": []
+    "saving": [],
+    "savingLinks": {}
   },
   "theme": "light",
   "language": "en",

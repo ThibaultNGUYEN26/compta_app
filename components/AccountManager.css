@@ -63,6 +63,28 @@
   min-width: 120px;
 }
 
+.account-link-row {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.account-link-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.account-link-label select {
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  padding: 4px 8px;
+  font: inherit;
+  background: #ffffff;
+}
+
 .account-edit {
   border: 1px solid rgba(37, 99, 235, 0.2);
   background: #ffffff;

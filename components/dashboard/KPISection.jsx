@@ -20,6 +20,9 @@ export default function KPISection({ kpis }) {
     totalFlow > 0 ? formatPercentage((kpis.realIncome / totalFlow) * 100) : undefined;
   const outcomePct =
     totalFlow > 0 ? formatPercentage((kpis.realOutcome / totalFlow) * 100) : undefined;
+  const expenseNoPrelev = kpis.realOutcome - kpis.prelevTotal;
+  const expenseNoPrelevPct =
+    totalFlow > 0 ? formatPercentage((expenseNoPrelev / totalFlow) * 100) : undefined;
   const prelevPct =
     kpis.realOutcome > 0 ? formatPercentage((kpis.prelevTotal / kpis.realOutcome) * 100) : undefined;
 
@@ -31,7 +34,7 @@ export default function KPISection({ kpis }) {
           label="Total Current Balance"
           value={formatCurrency(kpis.currentBalance)}
           variant="balance"
-          count={kpis.realIncomeCount + kpis.realOutcomeCount}
+          count={kpis.realIncomeCount + kpis.realOutcomeCount + kpis.prelevCount}
           percentage={currentBalancePct}
         />
         <KPICard
@@ -53,8 +56,15 @@ export default function KPISection({ kpis }) {
           label="Total Expenses"
           value={formatCurrency(kpis.realOutcome)}
           variant="expense"
-          count={kpis.realOutcomeCount}
           percentage={outcomePct}
+        />
+
+        <KPICard
+          label="Total Expenses (no prelev.)"
+          value={formatCurrency(expenseNoPrelev)}
+          variant="expense"
+          count={kpis.realOutcomeCount}
+          percentage={expenseNoPrelevPct}
         />
 
         <KPICard

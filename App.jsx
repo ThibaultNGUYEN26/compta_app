@@ -13,6 +13,7 @@ export default function App() {
     "Current account",
   ]);
   const [savingAccounts, setSavingAccounts] = useState([]);
+  const [savingLinks, setSavingLinks] = useState({});
   const [showAccounts, setShowAccounts] = useState(false);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [selectedCurrentAccount, setSelectedCurrentAccount] = useState(
@@ -36,6 +37,12 @@ export default function App() {
           ? settings.accounts.saving
           : []
       );
+      setSavingLinks(
+        settings.accounts.savingLinks &&
+          typeof settings.accounts.savingLinks === "object"
+          ? settings.accounts.savingLinks
+          : {}
+      );
       setSelectedCurrentAccount((prev) => {
         const nextCurrent =
           Array.isArray(settings.accounts.current) &&
@@ -52,20 +59,21 @@ export default function App() {
     };
   }, []);
 
-  const persistAccounts = (nextCurrent, nextSaving) => {
+  const persistAccounts = (nextCurrent, nextSaving, nextSavingLinks) => {
     if (!window.comptaApi?.saveSettings) return;
     return window.comptaApi.saveSettings({
       accounts: {
         current: nextCurrent,
         saving: nextSaving,
+        savingLinks: nextSavingLinks,
       },
     });
   };
 
   useEffect(() => {
     if (!accountsLoaded) return;
-    persistAccounts(currentAccounts, savingAccounts);
-  }, [accountsLoaded, currentAccounts, savingAccounts]);
+    persistAccounts(currentAccounts, savingAccounts, savingLinks);
+  }, [accountsLoaded, currentAccounts, savingAccounts, savingLinks]);
 
   useEffect(() => {
     if (!currentAccounts.length) return;
@@ -133,6 +141,10 @@ export default function App() {
 
   const addSavingAccount = (name) => {
     setSavingAccounts((prev) => [...prev, name]);
+    setSavingLinks((prev) => {
+      const fallback = currentAccounts[0] || "";
+      return { ...prev, [name]: prev[name] || fallback };
+    });
   };
 
   const renameCurrentAccount = (index, nextName) => {
@@ -145,18 +157,57 @@ export default function App() {
     setSavingAccounts((prev) =>
       prev.map((name, i) => (i === index ? nextName : name))
     );
+    setSavingLinks((prev) => {
+      const prevName = savingAccounts[index];
+      if (!prevName || prevName === nextName) return prev;
+      const next = { ...prev };
+      if (Object.prototype.hasOwnProperty.call(next, prevName)) {
+        next[nextName] = next[prevName];
+        delete next[prevName];
+      } else {
+        next[nextName] = currentAccounts[0] || "";
+      }
+      return next;
+    });
   };
 
   const deleteCurrentAccount = (index) => {
     setCurrentAccounts((prev) =>
       prev.filter((_, i) => i !== index)
     );
+    setSavingLinks((prev) => {
+      const removed = currentAccounts[index];
+      if (!removed) return prev;
+      const remaining = currentAccounts.filter((_, i) => i !== index);
+      const fallback = remaining[0] || "";
+      const next = { ...prev };
+      Object.keys(next).forEach((savingName) => {
+        if (next[savingName] === removed) {
+          next[savingName] = fallback;
+        }
+      });
+      return next;
+    });
   };
 
   const deleteSavingAccount = (index) => {
     setSavingAccounts((prev) =>
       prev.filter((_, i) => i !== index)
     );
+    setSavingLinks((prev) => {
+      const removed = savingAccounts[index];
+      if (!removed) return prev;
+      const next = { ...prev };
+      delete next[removed];
+      return next;
+    });
+  };
+
+  const linkSavingAccount = (savingName, currentName) => {
+    setSavingLinks((prev) => ({
+      ...prev,
+      [savingName]: currentName,
+    }));
   };
 
   const handleUpdate = (transaction) => {
@@ -241,12 +292,14 @@ export default function App() {
             <AccountManager
               currentAccounts={currentAccounts}
               savingAccounts={savingAccounts}
+              savingLinks={savingLinks}
               onAddCurrent={addCurrentAccount}
               onAddSaving={addSavingAccount}
               onRenameCurrent={renameCurrentAccount}
               onRenameSaving={renameSavingAccount}
               onDeleteCurrent={deleteCurrentAccount}
               onDeleteSaving={deleteSavingAccount}
+              onLinkSaving={linkSavingAccount}
             />
           </div>
         </div>
@@ -298,6 +351,7 @@ export default function App() {
           onDelete={handleDelete}
           currentAccounts={currentAccounts}
           savingAccounts={savingAccounts}
+          savingLinks={savingLinks}
         />
       ) : (
         <main className="app-stats">

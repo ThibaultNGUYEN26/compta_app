@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import TransactionList from "./TransactionList";
 import MonthlyStats from "./MonthlyStats";
+import { filterByScope } from "../utils/dashboardUtils";
 import "./ArchivePage.css";
 
 export default function ArchivePage({
@@ -9,9 +10,11 @@ export default function ArchivePage({
   onDelete,
   currentAccounts,
   savingAccounts,
+  savingLinks = {},
 }) {
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
+  const [scopeValue, setScopeValue] = useState("");
 
   const archiveData = useMemo(() => {
     const byYear = {};
@@ -57,13 +60,45 @@ export default function ArchivePage({
     }
   }, [archiveData, selectedYear, selectedMonth]);
 
+  const scopeOptions = useMemo(() => {
+    return (currentAccounts || []).map((name) => ({
+      value: `current::${name}`,
+      label: name,
+    }));
+  }, [currentAccounts]);
+
+  useEffect(() => {
+    const valid = scopeOptions.some((opt) => opt.value === scopeValue);
+    if (!valid && scopeOptions.length) {
+      setScopeValue(scopeOptions[0].value);
+    }
+  }, [scopeOptions, scopeValue]);
+
+  const parseScope = (value) => {
+    const [type, name] = value.split("::");
+    return { type: type || "current", name: name || "" };
+  };
+
+  const scope = useMemo(() => parseScope(scopeValue), [scopeValue]);
+
+  const monthTransactions = useMemo(() => {
+    return selectedYear && selectedMonth
+      ? archiveData.byYear[selectedYear]?.[selectedMonth] || []
+      : [];
+  }, [archiveData, selectedMonth, selectedYear]);
+
+  const filteredTransactions = useMemo(() => {
+    return filterByScope(monthTransactions, scope.type, scope.name, savingLinks);
+  }, [monthTransactions, scope, savingLinks]);
+
   return (
     <main className="app-archive">
       <section className="panel panel-archive">
         <MonthlyStats
-          transactions={transactions}
+          transactions={filteredTransactions}
           selectedYear={selectedYear}
           selectedMonth={selectedMonth ? Number(selectedMonth) - 1 : undefined}
+          scope={scope}
         />
         <div className="archive-header">
           <div>
@@ -73,6 +108,19 @@ export default function ArchivePage({
             </p>
           </div>
           <div className="archive-controls">
+            <label className="archive-field">
+              <span>Account</span>
+              <select
+                value={scopeValue}
+                onChange={(e) => setScopeValue(e.target.value)}
+              >
+                {scopeOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="archive-field">
               <span>Year</span>
               <select
@@ -115,16 +163,13 @@ export default function ArchivePage({
           </div>
         </div>
         <TransactionList
-          transactions={
-            selectedYear && selectedMonth
-              ? archiveData.byYear[selectedYear]?.[selectedMonth] || []
-              : []
-          }
+          transactions={filteredTransactions}
           limit={null}
           onUpdate={onUpdate}
           onDelete={onDelete}
           currentAccounts={currentAccounts}
           savingAccounts={savingAccounts}
+          scope={scope}
         />
       </section>
     </main>

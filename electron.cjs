@@ -30,6 +30,7 @@ function getDefaultSettings() {
     accounts: {
       current: ["Current account"],
       saving: [],
+      savingLinks: {},
     },
   };
 }

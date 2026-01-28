@@ -20,6 +20,7 @@ export default function StatsPage({ transactions }) {
   const [settingsAccounts, setSettingsAccounts] = useState({
     current: [],
     saving: [],
+    savingLinks: {},
   });
 
   useEffect(() => {
@@ -35,6 +36,11 @@ export default function StatsPage({ transactions }) {
         saving: Array.isArray(settings.accounts.saving)
           ? settings.accounts.saving
           : [],
+        savingLinks:
+          settings.accounts.savingLinks &&
+          typeof settings.accounts.savingLinks === "object"
+            ? settings.accounts.savingLinks
+            : {},
       });
     };
     loadSettings();
@@ -111,13 +117,13 @@ export default function StatsPage({ transactions }) {
 
   const filteredTransactions = useMemo(() => {
     let filtered = filterByDateRange(transactions, selectedYear, selectedMonth);
-    filtered = filterByScope(filtered, scope.type, scope.name);
+    filtered = filterByScope(filtered, scope.type, scope.name, settingsAccounts.savingLinks);
     return filtered;
-  }, [transactions, selectedYear, selectedMonth, scope]);
+  }, [transactions, selectedYear, selectedMonth, scope, settingsAccounts.savingLinks]);
 
   const kpis = useMemo(() => {
-    return computeKpis(filteredTransactions, accountLists);
-  }, [filteredTransactions, accountLists]);
+    return computeKpis(filteredTransactions, accountLists, scope);
+  }, [filteredTransactions, accountLists, scope]);
 
   const categoryBreakdown = useMemo(() => {
     return computeCategoryBreakdown(filteredTransactions);
@@ -167,16 +173,18 @@ export default function StatsPage({ transactions }) {
           </div>
         </div>
 
-        <div className="stats-full-width">
-          <DailyExpenseChart 
-            dailyExpenses={dailyExpenses}
-            selectedYear={selectedYear}
-            selectedMonth={selectedMonth}
-          />
-        </div>
+        {selectedMonth !== "" && selectedMonth !== null && selectedMonth !== undefined && (
+          <div className="stats-full-width">
+            <DailyExpenseChart 
+              dailyExpenses={dailyExpenses}
+              selectedYear={selectedYear}
+              selectedMonth={selectedMonth}
+            />
+          </div>
+        )}
 
         <div className="stats-drilldown">
-          <TransactionDrilldown transactions={filteredTransactions} />
+          <TransactionDrilldown transactions={filteredTransactions} scope={scope} />
         </div>
       </div>
     </div>
