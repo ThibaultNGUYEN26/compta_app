@@ -42,6 +42,12 @@ export default function App() {
   };
   const homeText = homeLabels[language] || homeLabels.fr;
 
+  const headerLabels = {
+    fr: { personalFinance: "Finances personnelles" },
+    en: { personalFinance: "Personal Finance" },
+  };
+  const headerText = headerLabels[language] || headerLabels.fr;
+
   useEffect(() => {
     let cancelled = false;
     const loadSettings = async () => {
@@ -291,7 +297,7 @@ export default function App() {
     <div className={`app${view === "stats" ? " is-stats" : ""}`}>
       <header className="app-header">
         <div className="app-header-brand">
-          <p className="app-eyebrow">Personal finance</p>
+          <p className="app-eyebrow">{headerText.personalFinance}</p>
           <h1 className="app-title">Compta</h1>
         </div>
         <div className="app-actions">

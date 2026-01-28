@@ -8,7 +8,9 @@ export default function KPICard({ label, value, meta, variant = "default", count
       <strong className="kpi-value">{value}</strong>
       {(count !== undefined || percentage !== undefined) && (
         <div className="kpi-metrics">
-          {count !== undefined && <span className="kpi-count">{count} tx</span>}
+          {count !== undefined && (
+            <span className="kpi-count">{count} Transactions</span>
+          )}
           {percentage !== undefined && <span className="kpi-percentage">{percentage}%</span>}
         </div>
       )}

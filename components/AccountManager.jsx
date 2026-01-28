@@ -121,6 +121,11 @@ export default function AccountManager({
                         type="button"
                         className="account-delete"
                         onClick={() => {
+                          const confirmText =
+                            language === "fr"
+                              ? "Supprimer ce compte ?"
+                              : "Delete this account?";
+                          if (!window.confirm(confirmText)) return;
                           onDeleteCurrent?.(index);
                           setEditingCurrentIndex(null);
                           setEditingCurrentValue("");
@@ -198,6 +203,11 @@ export default function AccountManager({
                         type="button"
                         className="account-delete"
                         onClick={() => {
+                          const confirmText =
+                            language === "fr"
+                              ? "Supprimer ce compte ?"
+                              : "Delete this account?";
+                          if (!window.confirm(confirmText)) return;
                           onDeleteSaving?.(index);
                           setEditingSavingIndex(null);
                           setEditingSavingValue("");
