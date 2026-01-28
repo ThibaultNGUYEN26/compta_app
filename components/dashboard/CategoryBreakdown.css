@@ -92,3 +92,19 @@
   font-size: 0.8rem;
   color: var(--muted);
 }
+
+body.theme-dark .category-bar-item {
+  background: rgba(15, 23, 42, 0.7);
+}
+
+body.theme-dark .category-bar-item:hover {
+  background: rgba(15, 23, 42, 0.9);
+}
+
+body.theme-dark .category-bar-track {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+body.theme-dark .category-breakdown .chart-title {
+  color: var(--ink);
+}

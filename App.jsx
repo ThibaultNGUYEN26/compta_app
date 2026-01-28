@@ -15,6 +15,7 @@ export default function App() {
   const [savingAccounts, setSavingAccounts] = useState([]);
   const [savingLinks, setSavingLinks] = useState({});
   const [language, setLanguage] = useState("fr");
+  const [theme, setTheme] = useState("light");
   const [settingsMeta, setSettingsMeta] = useState({});
   const [showAccounts, setShowAccounts] = useState(false);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
@@ -72,6 +73,7 @@ export default function App() {
           : {}
       );
       setLanguage(rest.language || "fr");
+      setTheme(rest.theme || "light");
       setSettingsMeta(rest);
       setSelectedCurrentAccount((prev) => {
         const nextCurrent =
@@ -92,12 +94,14 @@ export default function App() {
     nextCurrent,
     nextSaving,
     nextSavingLinks,
-    nextLanguage
+    nextLanguage,
+    nextTheme
   ) => {
     if (!window.comptaApi?.saveSettings) return;
     return window.comptaApi.saveSettings({
       ...settingsMeta,
       language: nextLanguage,
+      theme: nextTheme,
       accounts: {
         current: nextCurrent,
         saving: nextSaving,
@@ -108,8 +112,12 @@ export default function App() {
 
   useEffect(() => {
     if (!accountsLoaded) return;
-    persistAccounts(currentAccounts, savingAccounts, savingLinks, language);
-  }, [accountsLoaded, currentAccounts, savingAccounts, savingLinks, language, settingsMeta]);
+    persistAccounts(currentAccounts, savingAccounts, savingLinks, language, theme);
+  }, [accountsLoaded, currentAccounts, savingAccounts, savingLinks, language, theme, settingsMeta]);
+
+  useEffect(() => {
+    document.body.classList.toggle("theme-dark", theme === "dark");
+  }, [theme]);
 
   useEffect(() => {
     if (!currentAccounts.length) return;
@@ -334,6 +342,7 @@ export default function App() {
               savingAccounts={savingAccounts}
               savingLinks={savingLinks}
               language={language}
+              theme={theme}
               onAddCurrent={addCurrentAccount}
               onAddSaving={addSavingAccount}
               onRenameCurrent={renameCurrentAccount}
@@ -342,6 +351,7 @@ export default function App() {
               onDeleteSaving={deleteSavingAccount}
               onLinkSaving={linkSavingAccount}
               onLanguageChange={setLanguage}
+              onThemeChange={setTheme}
             />
           </div>
         </div>

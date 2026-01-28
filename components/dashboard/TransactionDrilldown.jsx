@@ -266,7 +266,11 @@ export default function TransactionDrilldown({
                   </td>
                   <td
                     className={`drilldown-amount ${
-                      getDisplayType(tx) === "income" ? "income" : "expense"
+                      tx.isPrelevement
+                        ? "prelevement"
+                        : getDisplayType(tx) === "income"
+                        ? "income"
+                        : "expense"
                     }`}
                   >
                     {getDisplayType(tx) === "income" ? "+" : "-"}

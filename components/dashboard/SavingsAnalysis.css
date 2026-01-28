@@ -101,6 +101,19 @@
   text-align: right;
 }
 
+body.theme-dark .savings-account-item {
+  background: rgba(15, 23, 42, 0.7);
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+body.theme-dark .savings-bar-track {
+  background: rgba(148, 163, 184, 0.2);
+}
+
+body.theme-dark .savings-analysis .chart-title {
+  color: var(--ink);
+}
+
 @media (max-width: 768px) {
   .savings-bar-row {
     grid-template-columns: 80px 1fr;

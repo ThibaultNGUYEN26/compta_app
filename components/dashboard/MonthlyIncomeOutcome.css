@@ -42,7 +42,7 @@
 }
 
 .donut-segment.prelevement {
-  stroke: #f59e0b;
+  stroke: #facc15;
 }
 
 .donut-center-label {
@@ -92,6 +92,23 @@
   font-weight: 600;
 }
 
+body.theme-dark .monthly-donut {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+body.theme-dark .donut-track {
+  stroke: rgba(148, 163, 184, 0.2);
+}
+
+body.theme-dark .legend-item {
+  color: var(--ink);
+}
+
+body.theme-dark .monthly-income-outcome .chart-title {
+  color: var(--ink);
+}
+
 .legend-dot {
   width: 12px;
   height: 12px;
@@ -107,5 +124,5 @@
 }
 
 .legend-dot-prelevement {
-  background: #f59e0b;
+  background: #facc15;
 }

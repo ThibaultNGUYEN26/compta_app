@@ -28,6 +28,22 @@ body {
   background-attachment: fixed;
 }
 
+body.theme-dark {
+  --bg: #0b1220;
+  --bg-accent: #111827;
+  --ink: #e2e8f0;
+  --muted: #94a3b8;
+  --card: #0f172a;
+  --line: rgba(148, 163, 184, 0.18);
+  --accent: #3b82f6;
+  --accent-strong: #60a5fa;
+  --money: #22c55e;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(37, 99, 235, 0.18), transparent 42%),
+    radial-gradient(circle at 85% 18%, rgba(34, 197, 94, 0.16), transparent 40%),
+    linear-gradient(140deg, #0b1220 0%, #0f172a 52%, #111827 100%);
+}
+
 .app {
   padding: clamp(20px, 2.6vw, 40px) 4.5vw 44px;
   max-width: 1200px;
@@ -110,6 +126,25 @@ body {
   border-radius: 999px;
   font-weight: 600;
   cursor: pointer;
+}
+
+body.theme-dark .modal-overlay {
+  background: rgba(2, 6, 23, 0.7);
+}
+
+body.theme-dark .modal-card {
+  background: var(--card);
+  border-color: var(--line);
+}
+
+body.theme-dark .modal-close {
+  border-color: rgba(148, 163, 184, 0.22);
+  color: var(--ink);
+}
+
+body.theme-dark .modal-close:hover {
+  border-color: rgba(96, 165, 250, 0.45);
+  color: var(--accent-strong);
 }
 
 .app-eyebrow {
@@ -219,6 +254,12 @@ body {
   color: var(--ink);
 }
 
+body.theme-dark .panel-account-select select {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: var(--ink);
+}
+
 .panel::before {
   content: "";
   position: absolute;
@@ -230,6 +271,14 @@ body {
 
 .panel-form::before {
   border-top-color: rgba(22, 163, 74, 0.45);
+}
+
+body.theme-dark .panel::before {
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.55);
+}
+
+body.theme-dark .panel-form::before {
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.6);
 }
 
 @media (max-width: 1200px) {

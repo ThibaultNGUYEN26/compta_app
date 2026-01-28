@@ -64,12 +64,17 @@
   color: var(--muted);
 }
 
-.transaction-category,
-.transaction-list .transaction-type {
+.transaction-category {
   padding: 4px 10px;
   border-radius: 999px;
   background: rgba(37, 99, 235, 0.1);
   color: #1d4ed8;
+  font-weight: 600;
+}
+
+.transaction-list .transaction-type {
+  padding: 4px 10px;
+  border-radius: 999px;
   font-weight: 600;
 }
 
@@ -92,8 +97,8 @@
 .transaction-prelevement {
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(234, 179, 8, 0.2);
-  color: #a16207;
+  background: rgba(251, 191, 36, 0.25);
+  color: #b45309;
   font-weight: 600;
 }
 
@@ -113,12 +118,12 @@
 }
 
 .transaction-list .transaction-type.is-income {
-  background: rgba(22, 163, 74, 0.12);
+  background: rgba(22, 163, 74, 0.16);
   color: #15803d;
 }
 
 .transaction-list .transaction-type.is-expense {
-  background: rgba(220, 38, 38, 0.12);
+  background: rgba(220, 38, 38, 0.16);
   color: #b91c1c;
 }
 
@@ -131,7 +136,11 @@
 }
 
 .transaction-amount.is-prelevement {
-  color: #d97706;
+  color: #f59e0b;
+}
+
+body.theme-dark .transaction-amount.is-prelevement {
+  color: #facc15;
 }
 
 .transaction-date {
@@ -243,8 +252,8 @@
   gap: 10px;
   padding: 8px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(234, 179, 8, 0.3);
-  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  background: rgba(251, 191, 36, 0.16);
   font-weight: 600;
   color: var(--ink);
 }
@@ -262,8 +271,8 @@
   width: 40px;
   height: 20px;
   border-radius: 999px;
-  background: rgba(37, 99, 235, 0.75);
-  border: 1px solid rgba(37, 99, 235, 0.95);
+  background: rgba(251, 191, 36, 0.85);
+  border: 1px solid rgba(251, 191, 36, 0.95);
   position: relative;
   transition: background 0.2s, border 0.2s;
 }
@@ -325,6 +334,99 @@
 .edit-actions .edit-delete {
   background: rgba(220, 38, 38, 0.16);
   color: #b91c1c;
+}
+
+body.theme-dark .transaction-item {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+body.theme-dark .transaction-item:hover {
+  border-color: rgba(96, 165, 250, 0.4);
+  box-shadow: 0 6px 16px rgba(2, 6, 23, 0.5);
+}
+
+body.theme-dark .transaction-item-selected {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(96, 165, 250, 0.6);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25);
+}
+
+body.theme-dark .transaction-category,
+body.theme-dark .transaction-list .transaction-type {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+body.theme-dark .transaction-list .transaction-type.is-income {
+  background: rgba(22, 163, 74, 0.2);
+  color: #86efac;
+}
+
+body.theme-dark .transaction-list .transaction-type.is-expense {
+  background: rgba(220, 38, 38, 0.22);
+  color: #fecaca;
+}
+
+body.theme-dark .transaction-prelevement {
+  background: rgba(251, 191, 36, 0.3);
+  color: #fde68a;
+}
+
+body.theme-dark .transaction-transfer {
+  background: rgba(148, 163, 184, 0.18);
+  color: #e2e8f0;
+}
+
+body.theme-dark .transaction-account {
+  background: rgba(148, 163, 184, 0.16);
+  color: #e2e8f0;
+}
+
+body.theme-dark .transaction-prelevement {
+  background: rgba(251, 191, 36, 0.25);
+  color: #fde68a;
+}
+
+body.theme-dark .transaction-edit {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+body.theme-dark .transaction-edit:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+body.theme-dark .transaction-edit-form input,
+body.theme-dark .transaction-edit-form select {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: var(--ink);
+}
+
+body.theme-dark .edit-type-toggle {
+  border-color: rgba(96, 165, 250, 0.35);
+  background: rgba(59, 130, 246, 0.16);
+}
+
+body.theme-dark .edit-prelevement-toggle {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.2);
+}
+
+body.theme-dark .edit-prelevement-pill {
+  background: rgba(251, 191, 36, 0.85);
+  border-color: rgba(251, 191, 36, 0.95);
+}
+
+body.theme-dark .edit-actions button:first-child {
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--ink);
+}
+
+body.theme-dark .edit-actions .edit-delete {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fecaca;
 }
 
 .edit-actions .edit-delete {

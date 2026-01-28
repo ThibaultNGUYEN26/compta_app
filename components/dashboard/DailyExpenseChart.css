@@ -149,6 +149,32 @@
   font-size: 0.875rem;
 }
 
+body.theme-dark .daily-expense-chart {
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --expense-color: #f87171;
+}
+
+body.theme-dark .daily-expense-chart .chart-title {
+  color: var(--text-primary);
+}
+
+body.theme-dark .grid-line {
+  stroke: rgba(148, 163, 184, 0.18);
+}
+
+body.theme-dark .line-area {
+  fill: rgba(248, 113, 113, 0.12);
+}
+
+body.theme-dark .line-point-dot {
+  border-color: #0f172a;
+}
+
+body.theme-dark .chart-summary {
+  border-top-color: rgba(148, 163, 184, 0.2);
+}
+
 @media (max-width: 768px) {
   .chart-summary {
     grid-template-columns: 1fr;

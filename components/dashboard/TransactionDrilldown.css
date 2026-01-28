@@ -10,6 +10,10 @@
   align-items: center;
 }
 
+body.theme-dark .transaction-drilldown .chart-title {
+  color: var(--ink);
+}
+
 .drilldown-count {
   font-size: 0.9rem;
   color: var(--muted);
@@ -175,6 +179,10 @@
   color: #dc2626;
 }
 
+.drilldown-amount.prelevement {
+  color: #facc15;
+}
+
 .drilldown-tags {
   display: flex;
   gap: 6px;
@@ -190,13 +198,54 @@
 }
 
 .tag-prelevement {
-  background: rgba(234, 179, 8, 0.15);
-  color: #a16207;
+  background: rgba(251, 191, 36, 0.25);
+  color: #b45309;
 }
 
 .tag-saving {
   background: rgba(37, 99, 235, 0.12);
   color: #1d4ed8;
+}
+
+body.theme-dark .drilldown-filters {
+  background: rgba(15, 23, 42, 0.7);
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+body.theme-dark .drilldown-search,
+body.theme-dark .drilldown-filter-row select {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: var(--ink);
+}
+
+body.theme-dark .drilldown-checkbox {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(148, 163, 184, 0.2);
+  color: var(--ink);
+}
+
+body.theme-dark .drilldown-table-wrapper {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+body.theme-dark .drilldown-table thead {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+body.theme-dark .drilldown-table tbody tr:hover {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+body.theme-dark .tag-saving {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+body.theme-dark .tag-prelevement {
+  background: rgba(251, 191, 36, 0.35);
+  color: #facc15;
 }
 
 .drilldown-empty {

@@ -69,7 +69,11 @@
 }
 
 .kpi-card-prelevement .kpi-value {
-  color: #d97706;
+  color: #f59e0b;
+}
+
+body.theme-dark .kpi-card-prelevement .kpi-value {
+  color: #facc15;
 }
 
 .kpi-card-balance {
@@ -79,4 +83,15 @@
 
 .kpi-card-balance .kpi-value {
   color: var(--accent-strong);
+}
+
+body.theme-dark .kpi-card {
+  background: linear-gradient(135deg, #0f172a 0%, #111c30 100%);
+  border-color: rgba(148, 163, 184, 0.22);
+  box-shadow: 0 14px 28px -18px rgba(2, 6, 23, 0.7);
+}
+
+body.theme-dark .kpi-card-balance {
+  background: linear-gradient(135deg, #0b1528 0%, #0f1c32 100%);
+  border-color: rgba(96, 165, 250, 0.35);
 }

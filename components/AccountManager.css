@@ -12,6 +12,8 @@
 .account-settings-row {
   display: flex;
   justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .account-settings-label {
@@ -28,6 +30,21 @@
   padding: 4px 8px;
   font: inherit;
   background: #ffffff;
+}
+
+.account-toggle {
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  padding: 4px 12px;
+  font: inherit;
+  background: #ffffff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.account-toggle:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  color: var(--accent-strong);
 }
 
 .account-grid {
@@ -183,4 +200,44 @@
   border: none;
   padding: 6px 12px;
   font-weight: 600;
+}
+
+body.theme-dark .account-block {
+  background: rgba(15, 23, 42, 0.65);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+body.theme-dark .account-block li {
+  background: rgba(59, 130, 246, 0.16);
+  color: var(--ink);
+}
+
+body.theme-dark .account-link-label {
+  color: var(--muted);
+}
+
+body.theme-dark .account-link-label select,
+body.theme-dark .account-form input,
+body.theme-dark .account-edit-input,
+body.theme-dark .account-settings-label select,
+body.theme-dark .account-toggle {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: var(--ink);
+}
+
+body.theme-dark .account-edit {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #93c5fd;
+}
+
+body.theme-dark .account-actions .account-cancel {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--ink);
+}
+
+body.theme-dark .account-actions .account-delete {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fecaca;
 }

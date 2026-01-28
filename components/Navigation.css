@@ -22,3 +22,17 @@
   background: var(--accent);
   color: #ffffff;
 }
+
+body.theme-dark .app-nav {
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+body.theme-dark .nav-button {
+  color: var(--muted);
+}
+
+body.theme-dark .nav-button.is-active {
+  background: var(--accent);
+  color: #ffffff;
+}

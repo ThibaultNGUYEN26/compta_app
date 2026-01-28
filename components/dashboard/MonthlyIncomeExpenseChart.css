@@ -94,3 +94,13 @@
 .monthly-legend .legend-dot-expense {
   background: #ef4444;
 }
+
+body.theme-dark .monthly-income-expense .chart-period,
+body.theme-dark .monthly-bar-label,
+body.theme-dark .monthly-legend {
+  color: var(--muted);
+}
+
+body.theme-dark .monthly-income-expense .chart-title {
+  color: var(--ink);
+}

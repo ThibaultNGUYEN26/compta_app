@@ -6,6 +6,7 @@ export default function AccountManager({
   savingAccounts,
   savingLinks = {},
   language = "fr",
+  theme = "light",
   onAddCurrent,
   onAddSaving,
   onRenameCurrent,
@@ -14,6 +15,7 @@ export default function AccountManager({
   onDeleteSaving,
   onLinkSaving,
   onLanguageChange,
+  onThemeChange,
 }) {
   const labels = {
     fr: {
@@ -31,6 +33,9 @@ export default function AccountManager({
       language: "Langue",
       fr: "Français",
       en: "English",
+      theme: "Thème",
+      light: "Clair",
+      dark: "Sombre",
     },
     en: {
       subtitle: "Manage your current and saving accounts.",
@@ -47,6 +52,9 @@ export default function AccountManager({
       language: "Language",
       fr: "French",
       en: "English",
+      theme: "Theme",
+      light: "Light",
+      dark: "Dark",
     },
   };
 
@@ -87,6 +95,18 @@ export default function AccountManager({
             <option value="fr">{t.fr}</option>
             <option value="en">{t.en}</option>
           </select>
+        </label>
+        <label className="account-settings-label">
+          {t.theme}
+          <button
+            type="button"
+            className="account-toggle"
+            onClick={() =>
+              onThemeChange?.(theme === "dark" ? "light" : "dark")
+            }
+          >
+            {theme === "dark" ? t.dark : t.light}
+          </button>
         </label>
       </div>
       <p className="account-subtitle">

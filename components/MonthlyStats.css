@@ -48,3 +48,9 @@
   font-size: 0.85rem;
   color: var(--muted);
 }
+
+body.theme-dark .monthly-card {
+  background: linear-gradient(135deg, #0f172a 0%, #111c30 100%);
+  border-color: rgba(148, 163, 184, 0.22);
+  box-shadow: 0 16px 32px -24px rgba(2, 6, 23, 0.7);
+}

@@ -40,6 +40,12 @@
   color: var(--ink);
 }
 
+body.theme-dark .archive-field select {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: var(--ink);
+}
+
 @media (max-width: 900px) {
   .archive-header {
     flex-direction: column;
