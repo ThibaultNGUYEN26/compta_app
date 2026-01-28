@@ -1,12 +1,13 @@
 {
+  "language": "en",
+  "theme": "light",
   "accounts": {
     "current": [
       "Current account"
     ],
-    "saving": [],
-    "savingLinks": {}
-  },
-  "theme": "light",
-  "language": "fr",
-  "currency": "EUR"
+    "saving": [
+    ],
+    "savingLinks": {
+    }
+  }
 }
