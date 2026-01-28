@@ -133,6 +133,15 @@ export const computeKpis = (transactions, accounts, scope = {}) => {
           realIncome += amount;
           realIncomeCount++;
         }
+      } else if (scope?.type === "current") {
+        currentTransfersOut += amount;
+        currentTransfersOutCount++;
+        currentTransfersIn += amount;
+        currentTransfersInCount++;
+        realOutcome += amount;
+        realOutcomeCount++;
+        realIncome += amount;
+        realIncomeCount++;
       }
     } else {
       // Real external transactions

@@ -143,15 +143,24 @@ async function loadRenderer(win) {
 }
 
 async function createWindow() {
+  const iconCandidates = [
+    path.join(__dirname, "assets", "compta_app_logo.ico"),
+    path.join(__dirname, "assets", "compta_app_logo.png"),
+  ];
+  const iconPath = iconCandidates.find((candidate) => fs.existsSync(candidate));
+
   const win = new BrowserWindow({
     width: 1000,
     height: 700,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
+
+  win.setMenu(null);
 
   await loadRenderer(win);
 }

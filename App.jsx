@@ -325,8 +325,16 @@ export default function App() {
         </div>
       </header>
       {showAccounts && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal-card panel">
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setShowAccounts(false)}
+        >
+          <div
+            className="modal-card panel"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="modal-header">
               <h2 className="panel-title">{settingsText.title}</h2>
               <button
