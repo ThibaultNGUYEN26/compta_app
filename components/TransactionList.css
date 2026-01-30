@@ -139,6 +139,10 @@
   color: #f59e0b;
 }
 
+.transaction-amount.is-masked {
+  letter-spacing: 0.08em;
+}
+
 body.theme-dark .transaction-amount.is-prelevement {
   color: #facc15;
 }

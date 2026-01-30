@@ -6,6 +6,7 @@ const formatCurrency = (value) => `${value.toFixed(0)} EUR`;
 export default function MonthlyIncomeExpenseChart({
   monthlySeries,
   selectedYear,
+  maskAmounts = false,
   language = "fr",
 }) {
   const labels = {
@@ -45,6 +46,8 @@ export default function MonthlyIncomeExpenseChart({
   );
 
   const monthFormatter = new Intl.DateTimeFormat(t.locale, { month: "short" });
+  const renderCurrency = (value) =>
+    maskAmounts ? "***** EUR" : formatCurrency(value);
 
   return (
     <div className="monthly-income-expense">
@@ -63,12 +66,12 @@ export default function MonthlyIncomeExpenseChart({
                 <div
                   className="monthly-bar monthly-bar-income"
                   style={{ height: `${incomePct}%` }}
-                  title={`${t.income}: ${formatCurrency(m.realIncome)}`}
+                  title={`${t.income}: ${renderCurrency(m.realIncome)}`}
                 />
                 <div
                   className="monthly-bar monthly-bar-expense"
                   style={{ height: `${expensePct}%` }}
-                  title={`${t.expenses}: ${formatCurrency(m.realOutcome)}`}
+                  title={`${t.expenses}: ${renderCurrency(m.realOutcome)}`}
                 />
               </div>
               <span className="monthly-bar-label">{label}</span>

@@ -70,6 +70,36 @@ body.theme-dark {
   margin-left: auto;
 }
 
+.privacy-button {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #ffffff;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 999px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border 0.2s, color 0.2s, background 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.privacy-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.privacy-button:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  color: var(--accent-strong);
+}
+
+.privacy-button:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.4);
+  outline-offset: 2px;
+}
+
 .settings-button {
   border: 1px solid rgba(15, 23, 42, 0.12);
   background: #ffffff;
@@ -109,6 +139,21 @@ body.theme-dark .settings-button:hover {
 }
 
 body.theme-dark .settings-button:focus-visible {
+  outline-color: rgba(96, 165, 250, 0.6);
+}
+
+body.theme-dark .privacy-button {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.9);
+  color: var(--ink);
+}
+
+body.theme-dark .privacy-button:hover {
+  border-color: rgba(96, 165, 250, 0.45);
+  color: var(--accent-strong);
+}
+
+body.theme-dark .privacy-button:focus-visible {
   outline-color: rgba(96, 165, 250, 0.6);
 }
 

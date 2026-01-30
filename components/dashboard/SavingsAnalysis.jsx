@@ -3,7 +3,11 @@ import "./SavingsAnalysis.css";
 
 const formatCurrency = (value) => `${value.toFixed(2)} EUR`;
 
-export default function SavingsAnalysis({ savingsByAccount, language = "fr" }) {
+export default function SavingsAnalysis({
+  savingsByAccount,
+  maskAmounts = false,
+  language = "fr",
+}) {
   const labels = {
     fr: {
       title: "Épargne par compte",
@@ -32,6 +36,8 @@ export default function SavingsAnalysis({ savingsByAccount, language = "fr" }) {
   const maxValue = Math.max(
     ...savingsByAccount.map((acc) => Math.max(acc.deposits, acc.withdrawals))
   );
+  const renderCurrency = (value) =>
+    maskAmounts ? "***** EUR" : formatCurrency(value);
 
   return (
     <div className="savings-analysis">
@@ -50,8 +56,8 @@ export default function SavingsAnalysis({ savingsByAccount, language = "fr" }) {
                     account.netChange >= 0 ? "positive" : "negative"
                   }`}
                 >
-                  {account.netChange >= 0 ? "+" : ""}
-                  {formatCurrency(account.netChange)}
+                  {!maskAmounts && account.netChange >= 0 ? "+" : ""}
+                  {renderCurrency(account.netChange)}
                 </span>
               </div>
               <div className="savings-bars-pair">
@@ -63,7 +69,7 @@ export default function SavingsAnalysis({ savingsByAccount, language = "fr" }) {
                       style={{ width: `${depositPercent}%` }}
                     />
                   </div>
-                  <span className="savings-bar-value">{formatCurrency(account.deposits)}</span>
+                  <span className="savings-bar-value">{renderCurrency(account.deposits)}</span>
                 </div>
                 <div className="savings-bar-row">
                   <span className="savings-bar-label">{t.withdrawals}</span>
@@ -73,7 +79,7 @@ export default function SavingsAnalysis({ savingsByAccount, language = "fr" }) {
                       style={{ width: `${withdrawalPercent}%` }}
                     />
                   </div>
-                  <span className="savings-bar-value">{formatCurrency(account.withdrawals)}</span>
+                  <span className="savings-bar-value">{renderCurrency(account.withdrawals)}</span>
                 </div>
               </div>
             </div>

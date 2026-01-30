@@ -11,6 +11,7 @@ export default function ArchivePage({
   currentAccounts,
   savingAccounts,
   savingLinks = {},
+  maskAmounts = false,
   language = "fr",
 }) {
   const labels = {
@@ -125,6 +126,7 @@ export default function ArchivePage({
           selectedYear={selectedYear}
           selectedMonth={selectedMonth ? Number(selectedMonth) - 1 : undefined}
           scope={scope}
+          maskAmounts={maskAmounts}
           language={language}
         />
         <div className="archive-header">
@@ -197,6 +199,7 @@ export default function ArchivePage({
           onDelete={onDelete}
           currentAccounts={currentAccounts}
           savingAccounts={savingAccounts}
+          maskAmounts={maskAmounts}
           scope={scope}
           language={language}
         />

@@ -5,6 +5,7 @@ export default function DailyExpenseChart({
   dailyExpenses,
   selectedYear,
   selectedMonth,
+  maskAmounts = false,
   language = "fr",
 }) {
   const labels = {
@@ -31,6 +32,8 @@ export default function DailyExpenseChart({
   };
   const t = labels[language] || labels.fr;
   const [hoveredPoint, setHoveredPoint] = useState(null);
+  const renderEuro = (value) =>
+    maskAmounts ? "€*****" : `€${value.toFixed(2)}`;
 
   const hasMonthSelected = selectedMonth !== "" && selectedMonth !== null && selectedMonth !== undefined;
 
@@ -93,7 +96,7 @@ export default function DailyExpenseChart({
       <div className="chart-info">
         <span className="chart-period">{dateRange}</span>
         <span className="chart-max">
-          {t.max}: €{maxExpense.toFixed(2)}
+          {t.max}: {renderEuro(maxExpense)}
         </span>
       </div>
       
@@ -135,7 +138,7 @@ export default function DailyExpenseChart({
                 setHoveredPoint({
                   x,
                   y,
-                  label: `${displayDate}: €${d.amount.toFixed(2)}`,
+                  label: `${displayDate}: ${renderEuro(d.amount)}`,
                 })
               }
               onMouseLeave={() => setHoveredPoint(null)}
@@ -169,13 +172,13 @@ export default function DailyExpenseChart({
         <div className="summary-item">
           <span className="summary-label">{t.total}</span>
           <span className="summary-value expense">
-            €{totalAmount.toFixed(2)}
+            {renderEuro(totalAmount)}
           </span>
         </div>
         <div className="summary-item">
           <span className="summary-label">{t.average}</span>
           <span className="summary-value">
-            €{(totalAmount / dailyExpenses.length).toFixed(2)}
+            {renderEuro(totalAmount / dailyExpenses.length)}
           </span>
         </div>
         <div className="summary-item">

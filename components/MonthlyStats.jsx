@@ -28,6 +28,7 @@ export default function MonthlyStats({
   selectedYear,
   selectedMonth,
   scope,
+  maskAmounts = false,
   language = "fr",
 }) {
   const labels = {
@@ -109,6 +110,9 @@ export default function MonthlyStats({
     year: "numeric",
   });
 
+  const renderCurrency = (value) =>
+    maskAmounts ? "***** EUR" : formatCurrency(value);
+
   return (
     <div className="monthly-stats">
       <div className="monthly-cards">
@@ -119,21 +123,21 @@ export default function MonthlyStats({
               monthly.balance >= 0 ? "is-income" : "is-expense"
             }`}
           >
-            {formatCurrency(monthly.balance)}
+            {renderCurrency(monthly.balance)}
           </strong>
           <span className="card-meta">{t.balanceMeta}</span>
         </div>
         <div className="monthly-card">
           <span className="card-label">{t.income}</span>
           <strong className="card-value is-income">
-            {formatCurrency(monthly.income)}
+            {renderCurrency(monthly.income)}
           </strong>
           <span className="card-meta">{t.incomeMeta(monthLabel)}</span>
         </div>
         <div className="monthly-card">
           <span className="card-label">{t.outcome}</span>
           <strong className="card-value is-expense">
-            {formatCurrency(monthly.outcome)}
+            {renderCurrency(monthly.outcome)}
           </strong>
           <span className="card-meta">{t.outcomeMeta(monthLabel)}</span>
         </div>

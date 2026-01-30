@@ -23,6 +23,7 @@ export default function StatsPage({
   currentAccounts = [],
   savingAccounts = [],
   savingLinks = {},
+  maskAmounts = false,
   language = "fr",
 }) {
   const labels = {
@@ -166,11 +167,12 @@ export default function StatsPage({
       <div className="stats-content">
         <div className="stats-top-row">
           <div className="stats-top-main">
-            <KPISection kpis={kpis} language={language} />
+            <KPISection kpis={kpis} maskAmounts={maskAmounts} language={language} />
           </div>
           <div className="stats-chart-card stats-donut-card">
             <MonthlyIncomeOutcome
               transactions={filteredTransactions}
+              maskAmounts={maskAmounts}
               language={language}
             />
           </div>
@@ -181,6 +183,7 @@ export default function StatsPage({
             <CategoryBreakdown
               categories={categoryBreakdown}
               totalOutcome={kpis.realOutcome}
+              maskAmounts={maskAmounts}
               language={language}
             />
           </div>
@@ -188,6 +191,7 @@ export default function StatsPage({
           <div className="stats-chart-card">
             <SavingsAnalysis
               savingsByAccount={savingsByAccount}
+              maskAmounts={maskAmounts}
               language={language}
             />
           </div>
@@ -199,6 +203,7 @@ export default function StatsPage({
               dailyExpenses={dailyExpenses}
               selectedYear={selectedYear}
               selectedMonth={selectedMonth}
+              maskAmounts={maskAmounts}
               language={language}
             />
           </div>
@@ -207,6 +212,7 @@ export default function StatsPage({
             <MonthlyIncomeExpenseChart
               monthlySeries={monthlySeries}
               selectedYear={selectedYear}
+              maskAmounts={maskAmounts}
               language={language}
             />
           </div>
@@ -216,6 +222,7 @@ export default function StatsPage({
           <TransactionDrilldown
             transactions={filteredTransactions}
             scope={scope}
+            maskAmounts={maskAmounts}
             language={language}
           />
         </div>

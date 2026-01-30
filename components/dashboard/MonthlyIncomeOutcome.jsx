@@ -4,7 +4,11 @@ import { isRealIncome, isRealOutcome } from "../../utils/dashboardUtils";
 
 const formatCurrency = (value) => `${value.toFixed(0)} EUR`;
 
-export default function MonthlyIncomeOutcome({ transactions, language = "fr" }) {
+export default function MonthlyIncomeOutcome({
+  transactions,
+  maskAmounts = false,
+  language = "fr",
+}) {
   const labels = {
     fr: {
       title: "Revenus vs Dépenses",
@@ -51,6 +55,8 @@ export default function MonthlyIncomeOutcome({ transactions, language = "fr" }) 
   const total = totals.income + expenseOnly + totals.prelevement;
   const radius = 38;
   const circumference = 2 * Math.PI * radius;
+  const renderCurrency = (value) =>
+    maskAmounts ? "***** EUR" : formatCurrency(value);
 
   if (total <= 0) {
     return (
@@ -90,7 +96,7 @@ export default function MonthlyIncomeOutcome({ transactions, language = "fr" }) 
             const offset = -cumulativeDash;
             cumulativeDash += dash;
             const percent = total > 0 ? (segment.value / total) * 100 : 0;
-            const label = `${segment.label}: ${formatCurrency(segment.value)} (${percent.toFixed(1)}%)`;
+            const label = `${segment.label}: ${renderCurrency(segment.value)} (${percent.toFixed(1)}%)`;
             return (
               <circle
                 key={segment.label}
@@ -124,7 +130,7 @@ export default function MonthlyIncomeOutcome({ transactions, language = "fr" }) 
             {t.total}
           </text>
           <text x="50" y="60" textAnchor="middle" className="donut-center-value">
-            {formatCurrency(total)}
+            {renderCurrency(total)}
           </text>
         </svg>
         <div className="monthly-legend">

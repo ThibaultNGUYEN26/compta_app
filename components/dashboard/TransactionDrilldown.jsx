@@ -12,6 +12,7 @@ export default function TransactionDrilldown({
   transactions,
   scope,
   onFilter,
+  maskAmounts = false,
   language = "fr",
 }) {
   const labels = {
@@ -133,6 +134,13 @@ export default function TransactionDrilldown({
       return `${from} → ${to}`;
     }
     return t.currentAccount || "";
+  };
+
+  const renderAmount = (value, type) => {
+    if (maskAmounts) {
+      return "***** EUR";
+    }
+    return `${type === "income" ? "+" : "-"}${formatCurrency(value || 0)}`;
   };
 
   const filteredTransactions = useMemo(() => {
@@ -275,8 +283,7 @@ export default function TransactionDrilldown({
                         : "expense"
                     }`}
                   >
-                    {getDisplayType(tx) === "income" ? "+" : "-"}
-                    {formatCurrency(tx.amount || 0)}
+                    {renderAmount(tx.amount, getDisplayType(tx))}
                   </td>
                   <td className="drilldown-tags">
                     {tx.isPrelevement && (

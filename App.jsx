@@ -22,6 +22,7 @@ export default function App() {
   const [selectedCurrentAccount, setSelectedCurrentAccount] = useState(
     "Current account"
   );
+  const [hideRecentAmounts, setHideRecentAmounts] = useState(false);
 
   const settingsLabels = {
     fr: { title: "Comptes", close: "Fermer" },
@@ -48,6 +49,17 @@ export default function App() {
     en: { personalFinance: "Personal Finance" },
   };
   const headerText = headerLabels[language] || headerLabels.fr;
+  const privacyLabels = {
+    fr: {
+      show: "Afficher les montants",
+      hide: "Masquer les montants",
+    },
+    en: {
+      show: "Show amounts",
+      hide: "Hide amounts",
+    },
+  };
+  const privacyText = privacyLabels[language] || privacyLabels.fr;
 
   useEffect(() => {
     let cancelled = false;
@@ -309,6 +321,47 @@ export default function App() {
           <h1 className="app-title">Compta</h1>
         </div>
         <div className="app-actions">
+          <button
+            type="button"
+            className="privacy-button"
+            onClick={() => setHideRecentAmounts((prev) => !prev)}
+            aria-pressed={hideRecentAmounts}
+            aria-label={hideRecentAmounts ? privacyText.show : privacyText.hide}
+            title={hideRecentAmounts ? privacyText.show : privacyText.hide}
+          >
+            {hideRecentAmounts ? (
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                focusable="false"
+                className="privacy-icon"
+              >
+                <path
+                  d="M3 4.5 20.5 22m-9.8-2.2C6.7 19 3.7 16.6 2 12c.7-1.8 1.7-3.3 3-4.6m4.2-2.4A10.7 10.7 0 0 1 12 5c5.1 0 9.4 3.2 10.9 7-0.5 1.3-1.2 2.5-2.1 3.5M9.5 9.6a3.5 3.5 0 0 0 4.9 4.9"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            ) : (
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                focusable="false"
+                className="privacy-icon"
+              >
+                <path
+                  d="M2 12c2.1-4.4 6-7 10-7s7.9 2.6 10 7c-2.1 4.4-6 7-10 7s-7.9-2.6-10-7Z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                />
+                <circle cx="12" cy="12" r="3.2" fill="currentColor" />
+              </svg>
+            )}
+          </button>
           <Navigation
             currentView={view}
             onViewChange={setView}
@@ -402,6 +455,7 @@ export default function App() {
               onDelete={handleDelete}
               currentAccounts={currentAccounts}
               savingAccounts={savingAccounts}
+              maskAmounts={hideRecentAmounts}
               language={language}
             />
           </section>
@@ -414,6 +468,7 @@ export default function App() {
           currentAccounts={currentAccounts}
           savingAccounts={savingAccounts}
           savingLinks={savingLinks}
+          maskAmounts={hideRecentAmounts}
           language={language}
         />
       ) : (
@@ -424,6 +479,7 @@ export default function App() {
               currentAccounts={currentAccounts}
               savingAccounts={savingAccounts}
               savingLinks={savingLinks}
+              maskAmounts={hideRecentAmounts}
               language={language}
             />
           </section>

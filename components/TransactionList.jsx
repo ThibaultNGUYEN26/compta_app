@@ -26,6 +26,7 @@ export default function TransactionList({
   onDelete,
   currentAccounts = [],
   savingAccounts = [],
+  maskAmounts = false,
   scope,
   language = "fr",
 }) {
@@ -229,6 +230,13 @@ export default function TransactionList({
     return num.toFixed(2);
   };
 
+  const renderAmount = (value, type) => {
+    if (maskAmounts) {
+      return "***** EUR";
+    }
+    return `${type === "income" ? "+" : "-"}${formatAmount(value)} EUR`;
+  };
+
   return (
     <ul className="transaction-list">
       {visibleTransactions.map((t, i) => {
@@ -430,10 +438,9 @@ export default function TransactionList({
                         : displayType === "income"
                         ? "is-income"
                         : "is-expense"
-                    }`}
+                    }${maskAmounts ? " is-masked" : ""}`}
                   >
-                    {displayType === "income" ? "+" : "-"}
-                    {formatAmount(t.amount)} EUR
+                    {renderAmount(t.amount, displayType)}
                   </span>
                   <span className="transaction-date">
                     {formatDate(t.date)}

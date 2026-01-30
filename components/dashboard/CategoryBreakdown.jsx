@@ -7,6 +7,7 @@ export default function CategoryBreakdown({
   categories,
   totalOutcome,
   onCategoryClick,
+  maskAmounts = false,
   language = "fr",
 }) {
   const labels = {
@@ -60,6 +61,8 @@ export default function CategoryBreakdown({
   if (!categories || categories.length === 0) {
     return <div className="chart-empty">{t.empty}</div>;
   }
+  const renderCurrency = (value) =>
+    maskAmounts ? "***** EUR" : formatCurrency(value);
 
   return (
     <div className="category-breakdown">
@@ -77,7 +80,7 @@ export default function CategoryBreakdown({
               <div className="category-bar-header">
                 <span className="category-name">{name}</span>
                 <div className="category-values">
-                  <span className="category-amount">{formatCurrency(cat.total)}</span>
+                  <span className="category-amount">{renderCurrency(cat.total)}</span>
                   <span className="category-percentage">{percentage.toFixed(1)}%</span>
                 </div>
               </div>
