@@ -29,7 +29,7 @@ export default function CategoryBreakdown({
         "Gifts/Donations": "Cadeaux/Donations",
         Salary: "Salaire",
         Other: "Autre",
-        Transfer: "Virement",
+        Transfer: "Transfère",
         Saving: "Épargne",
       },
     },

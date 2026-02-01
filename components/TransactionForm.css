@@ -86,7 +86,7 @@
 
 .category-option.is-selected {
   background: #f1f5f9;
-  color: var(--ink);
+  color: #1d4ed8;
   font-weight: 700;
 }
 
@@ -300,12 +300,17 @@ body.theme-dark .category-caret {
 body.theme-dark .category-menu {
   background: #0f172a;
   border-color: rgba(148, 163, 184, 0.3);
+  color: #e2e8f0;
+}
+
+body.theme-dark .category-option {
+  color: #e2e8f0;
 }
 
 body.theme-dark .category-option:hover,
 body.theme-dark .category-option.is-selected {
   background: rgba(148, 163, 184, 0.18);
-  color: #e2e8f0;
+  color: #60a5fa;
 }
 
 body.theme-dark .transaction-form input[type="date"]::-webkit-calendar-picker-indicator {

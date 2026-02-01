@@ -59,7 +59,7 @@ export default function TransactionList({
         "Gifts/Donations": "Cadeaux/Donations",
         Salary: "Salaire",
         Other: "Autre",
-        Transfer: "Virement",
+        Transfer: "Transfère",
         Saving: "Épargne",
       },
     },

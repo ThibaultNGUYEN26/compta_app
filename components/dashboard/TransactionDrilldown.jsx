@@ -51,7 +51,7 @@ export default function TransactionDrilldown({
         "Gifts/Donations": "Cadeaux/Donations",
         Salary: "Salaire",
         Other: "Autre",
-        Transfer: "Virement",
+        Transfer: "Transfère",
         Saving: "Épargne",
       },
       locale: "fr-FR",

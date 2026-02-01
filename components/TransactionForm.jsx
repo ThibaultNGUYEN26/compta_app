@@ -55,7 +55,7 @@ export default function TransactionForm({
         "Gifts/Donations": "Cadeaux/Donations",
         Salary: "Salaire",
         Other: "Autre",
-        Transfer: "Virement",
+        Transfer: "Transfère",
         Saving: "Épargne",
       },
     },
