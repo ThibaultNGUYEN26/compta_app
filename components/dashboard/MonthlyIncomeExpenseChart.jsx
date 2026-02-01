@@ -11,9 +11,9 @@ export default function MonthlyIncomeExpenseChart({
 }) {
   const labels = {
     fr: {
-      title: "Revenus et dépenses par mois",
-      income: "Revenus",
-      expenses: "Dépenses",
+      title: "Entrées et sorties par mois",
+      income: "Entrées",
+      expenses: "Sorties",
       empty: "Aucune donnée",
       locale: "fr-FR",
     },

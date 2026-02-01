@@ -10,8 +10,8 @@ export default function DailyExpenseChart({
 }) {
   const labels = {
     fr: {
-      title: "Dépenses quotidiennes",
-      empty: "Aucune dépense pour cette période.",
+      title: "Sorties quotidiennes",
+      empty: "Aucune sortie pour cette période.",
       max: "Max",
       day: "Jour",
       total: "Total",

@@ -14,9 +14,9 @@ export default function KPISection({ kpis, maskAmounts = false, language = "fr" 
       title: "Indicateurs clés",
       currentBalance: "Solde courant total",
       savingBalance: "Solde épargne total",
-      incomes: "Total des revenus",
-      expenses: "Total des dépenses",
-      expensesNoPrelev: "Total des dépenses (hors prélèvements)",
+      incomes: "Total des entrées",
+      expenses: "Total des sorties",
+      expensesNoPrelev: "Total des sorties (hors prélèvements)",
       prelevements: "Total des prélèvements",
     },
     en: {

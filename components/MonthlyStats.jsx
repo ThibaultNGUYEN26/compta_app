@@ -34,12 +34,12 @@ export default function MonthlyStats({
   const labels = {
     fr: {
       balance: "Solde du mois",
-      income: "Revenus du mois",
-      outcome: "Dépenses du mois",
+      income: "Entrées du mois",
+      outcome: "Sorties du mois",
       transactions: "Transactions",
-      balanceMeta: "Revenus moins dépenses",
-      incomeMeta: (label) => `Revenus pour ${label}`,
-      outcomeMeta: (label) => `Dépenses pour ${label}`,
+      balanceMeta: "Entrées moins sorties",
+      incomeMeta: (label) => `Entrées pour ${label}`,
+      outcomeMeta: (label) => `Sorties pour ${label}`,
       transactionsMeta: (label) => `Total pour ${label}`,
       locale: "fr-FR",
     },

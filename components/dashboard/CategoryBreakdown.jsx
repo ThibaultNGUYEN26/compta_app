@@ -12,8 +12,8 @@ export default function CategoryBreakdown({
 }) {
   const labels = {
     fr: {
-      title: "Dépenses par catégorie",
-      empty: "Aucune dépense",
+      title: "Sorties par catégorie",
+      empty: "Aucune sortie",
       transactions: "transactions",
       categories: {
         Restaurant: "Restaurant",

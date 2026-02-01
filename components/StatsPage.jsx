@@ -172,6 +172,7 @@ export default function StatsPage({
           <div className="stats-chart-card stats-donut-card">
             <MonthlyIncomeOutcome
               transactions={filteredTransactions}
+              scope={scope}
               maskAmounts={maskAmounts}
               language={language}
             />

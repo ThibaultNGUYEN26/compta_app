@@ -1,23 +1,29 @@
 import React, { useRef, useState } from "react";
 import "./MonthlyIncomeOutcome.css";
-import { isRealIncome, isRealOutcome } from "../../utils/dashboardUtils";
+import {
+  isRealIncome,
+  isRealOutcome,
+  isSavingTransfer,
+  isCurrentTransfer,
+} from "../../utils/dashboardUtils";
 
 const formatCurrency = (value) => `${value.toFixed(0)} EUR`;
 
 export default function MonthlyIncomeOutcome({
   transactions,
+  scope,
   maskAmounts = false,
   language = "fr",
 }) {
   const labels = {
     fr: {
-      title: "Revenus vs Dépenses",
+      title: "Entrées vs Sorties",
       noData: "Aucune donnée",
-      income: "Revenus",
-      expenses: "Dépenses",
+      income: "Entrées",
+      expenses: "Sorties",
       directDebit: "Prélèvement",
       total: "Total",
-      aria: "Revenus vs Dépenses",
+      aria: "Entrées vs Sorties",
     },
     en: {
       title: "Incomes vs Expenses",
@@ -39,7 +45,22 @@ export default function MonthlyIncomeOutcome({
 
   const totals = transactions.reduce(
     (acc, t) => {
-      const amount = t.amount || 0;
+      const amount = Math.abs(Number(t.amount) || 0);
+      if (isSavingTransfer(t)) {
+        return acc;
+      }
+      if (isCurrentTransfer(t)) {
+        if (scope?.type === "current") {
+          if (scope?.name) {
+            if (t.currentAccount === scope.name) acc.outcome += amount;
+            if (t.transferAccount === scope.name) acc.income += amount;
+          } else {
+            acc.outcome += amount;
+            acc.income += amount;
+          }
+        }
+        return acc;
+      }
       if (isRealIncome(t)) {
         acc.income += amount;
       } else if (isRealOutcome(t)) {
