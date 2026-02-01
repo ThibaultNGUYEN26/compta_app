@@ -11,6 +11,7 @@ export default function ArchivePage({
   currentAccounts,
   savingAccounts,
   savingLinks = {},
+  categories = [],
   maskAmounts = false,
   language = "fr",
 }) {
@@ -199,6 +200,7 @@ export default function ArchivePage({
           onDelete={onDelete}
           currentAccounts={currentAccounts}
           savingAccounts={savingAccounts}
+          categories={categories}
           maskAmounts={maskAmounts}
           scope={scope}
           language={language}

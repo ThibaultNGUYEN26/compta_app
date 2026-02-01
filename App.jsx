@@ -6,6 +6,24 @@ import StatsPage from "./components/StatsPage";
 import AccountManager from "./components/AccountManager";
 import Navigation from "./components/Navigation";
 
+const DEFAULT_CATEGORIES = [
+  "Restaurant",
+  "Groceries",
+  "Transport",
+  "Bills",
+  "Rent",
+  "Health",
+  "Entertainment",
+  "Travel",
+  "Subscriptions",
+  "Education/Work",
+  "Gifts/Donations",
+  "Salary",
+  "Transfer",
+  "Saving",
+  "Other",
+];
+
 export default function App() {
   const [transactions, setTransactions] = useState([]);
   const [view, setView] = useState("home");
@@ -23,6 +41,9 @@ export default function App() {
     "Current account"
   );
   const [hideRecentAmounts, setHideRecentAmounts] = useState(false);
+  const [currentAccountOpen, setCurrentAccountOpen] = useState(false);
+  const currentAccountRef = React.useRef(null);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
 
   const settingsLabels = {
     fr: { title: "Comptes", close: "Fermer" },
@@ -67,7 +88,7 @@ export default function App() {
       if (!window.comptaApi?.loadSettings) return;
       const settings = await window.comptaApi.loadSettings();
       if (cancelled || !settings?.accounts) return;
-      const { accounts, ...rest } = settings;
+      const { accounts, categories: savedCategories, ...rest } = settings;
       setCurrentAccounts(
         Array.isArray(accounts.current) && accounts.current.length
           ? accounts.current
@@ -87,6 +108,11 @@ export default function App() {
       setLanguage(rest.language || "fr");
       setTheme(rest.theme || "light");
       setSettingsMeta(rest);
+      if (Array.isArray(savedCategories) && savedCategories.length) {
+        setCategories(savedCategories);
+      } else {
+        setCategories(DEFAULT_CATEGORIES);
+      }
       setSelectedCurrentAccount((prev) => {
         const nextCurrent =
           Array.isArray(accounts.current) && accounts.current.length
@@ -106,6 +132,7 @@ export default function App() {
     nextCurrent,
     nextSaving,
     nextSavingLinks,
+    nextCategories,
     nextLanguage,
     nextTheme
   ) => {
@@ -119,13 +146,30 @@ export default function App() {
         saving: nextSaving,
         savingLinks: nextSavingLinks,
       },
+      categories: nextCategories,
     });
   };
 
   useEffect(() => {
     if (!accountsLoaded) return;
-    persistAccounts(currentAccounts, savingAccounts, savingLinks, language, theme);
-  }, [accountsLoaded, currentAccounts, savingAccounts, savingLinks, language, theme, settingsMeta]);
+    persistAccounts(
+      currentAccounts,
+      savingAccounts,
+      savingLinks,
+      categories,
+      language,
+      theme
+    );
+  }, [
+    accountsLoaded,
+    currentAccounts,
+    savingAccounts,
+    savingLinks,
+    categories,
+    language,
+    theme,
+    settingsMeta,
+  ]);
 
   useEffect(() => {
     document.body.classList.toggle("theme-dark", theme === "dark");
@@ -137,6 +181,17 @@ export default function App() {
       currentAccounts.includes(prev) ? prev : currentAccounts[0]
     );
   }, [currentAccounts]);
+
+  useEffect(() => {
+    const handleOutside = (event) => {
+      if (!currentAccountRef.current) return;
+      if (!currentAccountRef.current.contains(event.target)) {
+        setCurrentAccountOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -265,6 +320,39 @@ export default function App() {
       [savingName]: currentName,
     }));
   };
+
+  const addCategory = (name) => {
+    setCategories((prev) => {
+      const trimmed = name.trim();
+      if (!trimmed) return prev;
+      if (prev.includes(trimmed)) return prev;
+      return [...prev, trimmed];
+    });
+  };
+
+  const renameCategory = (index, nextName) => {
+    setCategories((prev) => {
+      const trimmed = nextName.trim();
+      if (!trimmed) return prev;
+      if (prev.includes(trimmed) && prev[index] !== trimmed) return prev;
+      return prev.map((name, i) => (i === index ? trimmed : name));
+    });
+  };
+
+  const deleteCategory = (index) => {
+    setCategories((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const mergedCategories = React.useMemo(() => {
+    const base = Array.isArray(categories) && categories.length
+      ? categories
+      : DEFAULT_CATEGORIES;
+    const set = new Set(base);
+    transactions.forEach((t) => {
+      if (t.category) set.add(t.category);
+    });
+    return Array.from(set);
+  }, [categories, transactions]);
 
   const handleUpdate = (transaction) => {
     const updated = transactions.map((item) =>
@@ -402,6 +490,7 @@ export default function App() {
               currentAccounts={currentAccounts}
               savingAccounts={savingAccounts}
               savingLinks={savingLinks}
+              categories={categories}
               language={language}
               theme={theme}
               onAddCurrent={addCurrentAccount}
@@ -411,6 +500,9 @@ export default function App() {
               onDeleteCurrent={deleteCurrentAccount}
               onDeleteSaving={deleteSavingAccount}
               onLinkSaving={linkSavingAccount}
+              onAddCategory={addCategory}
+              onRenameCategory={renameCategory}
+              onDeleteCategory={deleteCategory}
               onLanguageChange={setLanguage}
               onThemeChange={setTheme}
             />
@@ -424,18 +516,41 @@ export default function App() {
             <div className="panel-account-row">
               <label className="panel-account-select">
                 <span>{homeText.account}</span>
-                <select
-                  value={selectedCurrentAccount}
-                  onChange={(e) => setSelectedCurrentAccount(e.target.value)}
-                >
-                  {(currentAccounts.length ? currentAccounts : ["Current account"]).map(
-                    (account) => (
-                      <option key={account} value={account}>
-                        {account}
-                      </option>
-                    )
+                <div className="category-picker" ref={currentAccountRef}>
+                  <button
+                    type="button"
+                    className="category-trigger"
+                    onClick={() => setCurrentAccountOpen((prev) => !prev)}
+                    aria-expanded={currentAccountOpen}
+                  >
+                    {selectedCurrentAccount}
+                    <span className="category-caret" aria-hidden="true" />
+                  </button>
+                  {currentAccountOpen && (
+                    <div className="category-menu" role="listbox">
+                      {(currentAccounts.length
+                        ? currentAccounts
+                        : ["Current account"]
+                      ).map((account) => (
+                        <button
+                          key={account}
+                          type="button"
+                          className={`category-option${
+                            account === selectedCurrentAccount ? " is-selected" : ""
+                          }`}
+                          onClick={() => {
+                            setSelectedCurrentAccount(account);
+                            setCurrentAccountOpen(false);
+                          }}
+                          role="option"
+                          aria-selected={account === selectedCurrentAccount}
+                        >
+                          {account}
+                        </button>
+                      ))}
+                    </div>
                   )}
-                </select>
+                </div>
               </label>
             </div>
             <TransactionForm
@@ -443,6 +558,7 @@ export default function App() {
               currentAccounts={currentAccounts}
               savingAccounts={savingAccounts}
               selectedCurrentAccount={selectedCurrentAccount}
+              categories={mergedCategories}
               language={language}
             />
           </section>
@@ -455,6 +571,7 @@ export default function App() {
               onDelete={handleDelete}
               currentAccounts={currentAccounts}
               savingAccounts={savingAccounts}
+              categories={mergedCategories}
               maskAmounts={hideRecentAmounts}
               language={language}
             />
@@ -468,6 +585,7 @@ export default function App() {
           currentAccounts={currentAccounts}
           savingAccounts={savingAccounts}
           savingLinks={savingLinks}
+          categories={mergedCategories}
           maskAmounts={hideRecentAmounts}
           language={language}
         />

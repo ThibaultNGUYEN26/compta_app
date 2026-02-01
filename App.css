@@ -170,7 +170,9 @@ body.theme-dark .privacy-button:focus-visible {
 .modal-card {
   width: min(720px, 100%);
   max-height: 85vh;
-  overflow: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
@@ -314,6 +316,10 @@ body.theme-dark .modal-close:hover {
   font-family: inherit;
   background: #ffffff;
   color: var(--ink);
+}
+
+.panel-account-select .category-picker {
+  flex: 1;
 }
 
 body.theme-dark .panel-account-select select {

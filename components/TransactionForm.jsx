@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./TransactionForm.css";
 
-const categories = [
+const DEFAULT_CATEGORIES = [
   "Restaurant",
   "Groceries",
   "Transport",
@@ -26,6 +26,7 @@ export default function TransactionForm({
   currentAccounts = [],
   savingAccounts = [],
   selectedCurrentAccount,
+  categories = DEFAULT_CATEGORIES,
   language = "fr",
 }) {
   const labels = {
@@ -94,7 +95,8 @@ export default function TransactionForm({
   const safeInitial = initialValues || {};
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState(categories[0]);
+  const categoryOptions = categories.length ? categories : DEFAULT_CATEGORIES;
+  const [category, setCategory] = useState(categoryOptions[0] || "Other");
   const [type, setType] = useState("expense");
   const [isPrelevement, setIsPrelevement] = useState(false);
   const [date, setDate] = useState(today);
@@ -107,6 +109,8 @@ export default function TransactionForm({
   const [currentAccount, setCurrentAccount] = useState(
     selectedCurrentAccount || currentAccounts[0] || "Current account"
   );
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const categoryRef = useRef(null);
 
   useEffect(() => {
     if (category !== "Transfer") return;
@@ -122,7 +126,7 @@ export default function TransactionForm({
     if (!initialValues) {
       setName("");
       setAmount("");
-      setCategory(categories[0]);
+      setCategory(categoryOptions[0] || "Other");
       setType("expense");
       setIsPrelevement(false);
       setDate(today);
@@ -139,7 +143,7 @@ export default function TransactionForm({
         ? String(safeInitial.amount)
         : safeInitial.amount || ""
     );
-    setCategory(safeInitial.category || categories[0]);
+    setCategory(safeInitial.category || categoryOptions[0] || "Other");
     setType(safeInitial.type || "expense");
     setIsPrelevement(Boolean(safeInitial.isPrelevement));
     setSavingAccount(
@@ -164,7 +168,38 @@ export default function TransactionForm({
     } else {
       setDate(today);
     }
-  }, [currentAccounts, initialValues, savingAccounts, selectedCurrentAccount, today]);
+    setCategoryOpen(false);
+  }, [
+    currentAccounts,
+    initialValues,
+    savingAccounts,
+    selectedCurrentAccount,
+    categoryOptions,
+    today,
+  ]);
+
+  useEffect(() => {
+    const handleOutside = (event) => {
+      if (!categoryRef.current) return;
+      if (!categoryRef.current.contains(event.target)) {
+        setCategoryOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
+
+  const selectCategory = (next) => {
+    setCategory(next);
+    if (next === "Saving") {
+      setSavingAccount(savingAccounts[0] || "");
+    }
+    if (next === "Transfer") {
+      setTransferAccount(currentAccounts[0] || "");
+      setIsPrelevement(false);
+    }
+    setCategoryOpen(false);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -196,7 +231,7 @@ export default function TransactionForm({
     if (!initialValues) {
       setName("");
       setAmount("");
-      setCategory(categories[0]);
+      setCategory(categoryOptions[0] || "Other");
       setType("expense");
       setIsPrelevement(false);
       setDate(today);
@@ -229,26 +264,35 @@ export default function TransactionForm({
         step="0.01"
         onChange={(e) => setAmount(e.target.value)}
       />
-      <select
-        value={category}
-        onChange={(e) => {
-          const next = e.target.value;
-          setCategory(next);
-          if (next === "Saving") {
-            setSavingAccount(savingAccounts[0] || "");
-          }
-          if (next === "Transfer") {
-            setTransferAccount(currentAccounts[0] || "");
-            setIsPrelevement(false);
-          }
-        }}
-      >
-        {categories.map((cat) => (
-          <option key={cat} value={cat}>
-            {t.categories[cat] || cat}
-          </option>
-        ))}
-      </select>
+      <div className="category-picker" ref={categoryRef}>
+        <button
+          type="button"
+          className="category-trigger"
+          onClick={() => setCategoryOpen((prev) => !prev)}
+          aria-expanded={categoryOpen}
+        >
+          {t.categories[category] || category}
+          <span className="category-caret" aria-hidden="true" />
+        </button>
+        {categoryOpen && (
+          <div className="category-menu" role="listbox">
+            {categoryOptions.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                className={`category-option${
+                  cat === category ? " is-selected" : ""
+                }`}
+                onClick={() => selectCategory(cat)}
+                role="option"
+                aria-selected={cat === category}
+              >
+                {t.categories[cat] || cat}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       {category === "Saving" && (
         <select
           value={savingAccount}

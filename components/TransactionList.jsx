@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "./TransactionList.css";
 
-const categories = [
+const DEFAULT_CATEGORIES = [
   "Restaurant",
   "Groceries",
   "Transport",
@@ -26,6 +26,7 @@ export default function TransactionList({
   onDelete,
   currentAccounts = [],
   savingAccounts = [],
+  categories = DEFAULT_CATEGORIES,
   maskAmounts = false,
   scope,
   language = "fr",
@@ -96,12 +97,13 @@ export default function TransactionList({
   };
   const i18n = labels[language] || labels.fr;
 
+  const categoryOptions = categories.length ? categories : DEFAULT_CATEGORIES;
   const [editingId, setEditingId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [formState, setFormState] = useState({
     name: "",
     amount: "",
-    category: categories[0],
+    category: categoryOptions[0] || "Other",
     type: "expense",
     isPrelevement: false,
     date: "",
@@ -150,7 +152,7 @@ export default function TransactionList({
         typeof transaction.amount === "number"
           ? String(transaction.amount)
           : transaction.amount || "",
-      category: transaction.category || categories[0],
+      category: transaction.category || categoryOptions[0] || "Other",
       type: transaction.type || "expense",
       isPrelevement: Boolean(transaction.isPrelevement),
       accountName: transaction.accountName || "",
@@ -316,7 +318,7 @@ export default function TransactionList({
                     })
                   }
                 >
-                  {categories.map((cat) => (
+                  {categoryOptions.map((cat) => (
                     <option key={cat} value={cat}>
                       {i18n.categories[cat] || cat}
                     </option>
