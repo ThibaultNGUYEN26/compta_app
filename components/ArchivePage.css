@@ -38,12 +38,41 @@
   text-transform: none;
   letter-spacing: normal;
   color: var(--ink);
+  transition: border 0.2s, box-shadow 0.2s;
+}
+
+.archive-field select:focus {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.6);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.archive-field select option {
+  color: var(--ink);
+}
+
+.archive-field select option:checked {
+  color: #1d4ed8;
+  font-weight: 600;
 }
 
 body.theme-dark .archive-field select {
   background: rgba(15, 23, 42, 0.85);
   border-color: rgba(148, 163, 184, 0.25);
   color: var(--ink);
+}
+
+body.theme-dark .archive-field select:focus {
+  border-color: rgba(96, 165, 250, 0.6);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.18);
+}
+
+body.theme-dark .archive-field select option {
+  color: #e2e8f0;
+}
+
+body.theme-dark .archive-field select option:checked {
+  color: #60a5fa;
 }
 
 @media (max-width: 900px) {

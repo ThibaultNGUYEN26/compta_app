@@ -20,6 +20,7 @@ const DEFAULT_CATEGORIES = [
   "Gifts/Donations",
   "Salary",
   "Transfer",
+  "Account Transfer",
   "Saving",
   "Other",
 ];
@@ -109,7 +110,10 @@ export default function App() {
       setTheme(rest.theme || "light");
       setSettingsMeta(rest);
       if (Array.isArray(savedCategories) && savedCategories.length) {
-        setCategories(savedCategories);
+        const merged = new Set(savedCategories);
+        merged.add("Transfer");
+        merged.add("Account Transfer");
+        setCategories(Array.from(merged));
       } else {
         setCategories(DEFAULT_CATEGORIES);
       }

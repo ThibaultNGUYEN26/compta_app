@@ -51,7 +51,8 @@ export default function TransactionDrilldown({
         "Gifts/Donations": "Cadeaux/Donations",
         Salary: "Salaire",
         Other: "Autre",
-        Transfer: "Transfère",
+        Transfer: "Virement",
+        "Account Transfer": "Transfère",
         Saving: "Épargne",
       },
       locale: "fr-FR",
@@ -92,6 +93,7 @@ export default function TransactionDrilldown({
         Salary: "Salary",
         Other: "Other",
         Transfer: "Transfer",
+        "Account Transfer": "Account Transfer",
         Saving: "Saving",
       },
       locale: "en-US",
@@ -113,8 +115,12 @@ export default function TransactionDrilldown({
     return Array.from(cats).sort();
   }, [transactions]);
 
+  const isAccountTransfer = (t) =>
+    t?.category === "Account Transfer" ||
+    (t?.category === "Transfer" && t?.transferAccount);
+
   const getDisplayType = (t) => {
-    if (t.category !== "Transfer") return t.type;
+    if (!isAccountTransfer(t)) return t.type;
     if (scope?.type === "current" && scope?.name) {
       if (t.transferAccount === scope.name) return "income";
       if (t.currentAccount === scope.name) return "expense";
@@ -123,7 +129,7 @@ export default function TransactionDrilldown({
   };
 
   const getAccountLabel = (t) => {
-    if (t.category === "Transfer") {
+    if (isAccountTransfer(t)) {
       const from = t.currentAccount || i18n.current;
       const to = t.transferAccount || i18n.current;
       return `${from} → ${to}`;

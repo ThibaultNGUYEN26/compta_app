@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import TransactionList from "./TransactionList";
 import MonthlyStats from "./MonthlyStats";
 import { filterByScope } from "../utils/dashboardUtils";
@@ -43,6 +43,12 @@ export default function ArchivePage({
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
   const [scopeValue, setScopeValue] = useState("");
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [yearOpen, setYearOpen] = useState(false);
+  const [monthOpen, setMonthOpen] = useState(false);
+  const accountRef = useRef(null);
+  const yearRef = useRef(null);
+  const monthRef = useRef(null);
 
   const archiveData = useMemo(() => {
     const byYear = {};
@@ -102,12 +108,41 @@ export default function ArchivePage({
     }
   }, [scopeOptions, scopeValue]);
 
+  useEffect(() => {
+    const handleOutside = (event) => {
+      if (accountRef.current && !accountRef.current.contains(event.target)) {
+        setAccountOpen(false);
+      }
+      if (yearRef.current && !yearRef.current.contains(event.target)) {
+        setYearOpen(false);
+      }
+      if (monthRef.current && !monthRef.current.contains(event.target)) {
+        setMonthOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
+
   const parseScope = (value) => {
     const [type, name] = value.split("::");
     return { type: type || "current", name: name || "" };
   };
 
   const scope = useMemo(() => parseScope(scopeValue), [scopeValue]);
+  const scopeLabel =
+    scopeOptions.find((opt) => opt.value === scopeValue)?.label ||
+    scopeOptions[0]?.label ||
+    t.accountFallback;
+  const yearLabel =
+    selectedYear ||
+    (archiveData.years.length ? archiveData.years[0] : t.year);
+  const monthLabel = selectedMonth
+    ? new Date(Number(selectedYear), Number(selectedMonth) - 1, 1).toLocaleString(
+        language === "fr" ? "fr-FR" : "en-US",
+        { month: "long" }
+      )
+    : t.month;
 
   const monthTransactions = useMemo(() => {
     return selectedYear && selectedMonth
@@ -138,58 +173,126 @@ export default function ArchivePage({
           <div className="archive-controls">
             <label className="archive-field">
               <span>{t.account}</span>
-              <select
-                value={scopeValue}
-                onChange={(e) => setScopeValue(e.target.value)}
-              >
-                {scopeOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+              <div className="category-picker" ref={accountRef}>
+                <button
+                  type="button"
+                  className="category-trigger"
+                  onClick={() => setAccountOpen((prev) => !prev)}
+                  aria-expanded={accountOpen}
+                  disabled={!scopeOptions.length}
+                >
+                  {scopeLabel}
+                  <span className="category-caret" aria-hidden="true" />
+                </button>
+                {accountOpen && scopeOptions.length > 0 && (
+                  <div className="category-menu" role="listbox">
+                    {scopeOptions.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        className={`category-option${
+                          opt.value === scopeValue ? " is-selected" : ""
+                        }`}
+                        onClick={() => {
+                          setScopeValue(opt.value);
+                          setAccountOpen(false);
+                        }}
+                        role="option"
+                        aria-selected={opt.value === scopeValue}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </label>
             <label className="archive-field">
               <span>{t.year}</span>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-              >
-                {archiveData.years.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
+              <div className="category-picker" ref={yearRef}>
+                <button
+                  type="button"
+                  className="category-trigger"
+                  onClick={() => setYearOpen((prev) => !prev)}
+                  aria-expanded={yearOpen}
+                  disabled={!archiveData.years.length}
+                >
+                  {yearLabel}
+                  <span className="category-caret" aria-hidden="true" />
+                </button>
+                {yearOpen && archiveData.years.length > 0 && (
+                  <div className="category-menu" role="listbox">
+                    {archiveData.years.map((year) => (
+                      <button
+                        key={year}
+                        type="button"
+                        className={`category-option${
+                          year === selectedYear ? " is-selected" : ""
+                        }`}
+                        onClick={() => {
+                          setSelectedYear(year);
+                          setYearOpen(false);
+                        }}
+                        role="option"
+                        aria-selected={year === selectedYear}
+                      >
+                        {year}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </label>
             <label className="archive-field">
               <span>{t.month}</span>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                disabled={!selectedYear}
-              >
-                {(archiveData.byYear[selectedYear]
-                  ? Object.keys(archiveData.byYear[selectedYear])
-                      .sort((a, b) => Number(a) - Number(b))
-                      .map((month) => {
-                        const label = new Date(
-                          Number(selectedYear),
-                          Number(month) - 1,
-                          1
-                        ).toLocaleString(
-                          language === "fr" ? "fr-FR" : "en-US",
-                          { month: "long" }
-                        );
-                        return (
-                          <option key={month} value={month}>
-                            {label}
-                          </option>
-                        );
-                      })
-                  : []
+              <div className="category-picker" ref={monthRef}>
+                <button
+                  type="button"
+                  className="category-trigger"
+                  onClick={() => setMonthOpen((prev) => !prev)}
+                  aria-expanded={monthOpen}
+                  disabled={!selectedYear}
+                >
+                  {monthLabel}
+                  <span className="category-caret" aria-hidden="true" />
+                </button>
+                {monthOpen && selectedYear && (
+                  <div className="category-menu" role="listbox">
+                    {(archiveData.byYear[selectedYear]
+                      ? Object.keys(archiveData.byYear[selectedYear])
+                          .sort((a, b) => Number(a) - Number(b))
+                          .map((month) => {
+                            const label = new Date(
+                              Number(selectedYear),
+                              Number(month) - 1,
+                              1
+                            ).toLocaleString(
+                              language === "fr" ? "fr-FR" : "en-US",
+                              { month: "long" }
+                            );
+                            return (
+                              <button
+                                key={month}
+                                type="button"
+                                className={`category-option${
+                                  month === selectedMonth ? " is-selected" : ""
+                                }`}
+                                onClick={() => {
+                                  setSelectedMonth(month);
+                                  setMonthOpen(false);
+                                }}
+                                role="option"
+                                aria-selected={month === selectedMonth}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })
+                      : []
+                    )}
+                  </div>
                 )}
-              </select>
+              </div>
             </label>
           </div>
         </div>

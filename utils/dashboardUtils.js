@@ -14,7 +14,11 @@ export const isSavingTransfer = (transaction) => {
  * Check if transaction is a transfer between current accounts
  */
 export const isCurrentTransfer = (transaction) => {
-  return transaction.category === "Transfer" && transaction.transferAccount;
+  return (
+    (transaction.category === "Account Transfer" ||
+      transaction.category === "Transfer") &&
+    transaction.transferAccount
+  );
 };
 
 /**

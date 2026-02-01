@@ -78,7 +78,12 @@ export default function MonthlyStats({
       let outcome = 0;
       for (const item of items) {
         const amount = item.amount || 0;
-        if (item.category === "Transfer" && scope?.type === "current" && scope?.name) {
+        if (
+          (item.category === "Account Transfer" ||
+            (item.category === "Transfer" && item.transferAccount)) &&
+          scope?.type === "current" &&
+          scope?.name
+        ) {
           if (item.transferAccount === scope.name) {
             income += amount;
           } else if (item.currentAccount === scope.name) {

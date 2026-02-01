@@ -1,13 +1,30 @@
 {
-  "language": "en",
+  "language": "fr",
   "theme": "light",
   "accounts": {
     "current": [
-      "Current account"
     ],
     "saving": [
     ],
     "savingLinks": {
     }
-  }
+  },
+  "categories": [
+    "Restaurant",
+    "Groceries",
+    "Transport",
+    "Bills",
+    "Rent",
+    "Health",
+    "Entertainment",
+    "Travel",
+    "Subscriptions",
+    "Education/Work",
+    "Gifts/Donations",
+    "Salary",
+    "Transfer",
+    "Saving",
+    "Account Transfer",
+    "Other"
+  ]
 }

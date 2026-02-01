@@ -15,6 +15,7 @@ const DEFAULT_CATEGORIES = [
   "Gifts/Donations",
   "Salary",
   "Transfer",
+  "Account Transfer",
   "Saving",
   "Other",
 ];
@@ -59,7 +60,8 @@ export default function TransactionList({
         "Gifts/Donations": "Cadeaux/Donations",
         Salary: "Salaire",
         Other: "Autre",
-        Transfer: "Transfère",
+        Transfer: "Virement",
+        "Account Transfer": "Transfère",
         Saving: "Épargne",
       },
     },
@@ -91,6 +93,7 @@ export default function TransactionList({
         Salary: "Salary",
         Other: "Other",
         Transfer: "Transfer",
+        "Account Transfer": "Account Transfer",
         Saving: "Saving",
       },
     },
@@ -121,7 +124,7 @@ export default function TransactionList({
   );
 
   useEffect(() => {
-    if (formState.category !== "Transfer") return;
+    if (formState.category !== "Account Transfer") return;
     if (!currentAccounts.length) return;
     if (formState.transferAccount === formState.currentAccount) {
       const fallback =
@@ -189,7 +192,7 @@ export default function TransactionList({
     const parsedAmount = parseFloat(formState.amount);
     if (!formState.name || Number.isNaN(parsedAmount)) return;
     if (formState.category === "Saving" && !formState.savingAccount) return;
-    if (formState.category === "Transfer" && !formState.transferAccount) return;
+    if (formState.category === "Account Transfer" && !formState.transferAccount) return;
     const finalType = formState.isPrelevement ? "expense" : formState.type;
     const resolvedCurrent =
       formState.currentAccount || currentAccounts[0] || "Current account";
@@ -205,7 +208,7 @@ export default function TransactionList({
       category: formState.category,
       type: finalType,
       isPrelevement:
-        formState.category === "Transfer" ? false : formState.isPrelevement,
+        formState.category === "Account Transfer" ? false : formState.isPrelevement,
       currentAccount: resolvedCurrent,
       savingAccount: resolvedSaving,
       transferAccount: resolvedTransfer,
@@ -239,14 +242,19 @@ export default function TransactionList({
     return `${type === "income" ? "+" : "-"}${formatAmount(value)} EUR`;
   };
 
+  const isAccountTransfer = (tx) =>
+    tx?.category === "Account Transfer" ||
+    (tx?.category === "Transfer" && tx?.transferAccount);
+
   return (
     <ul className="transaction-list">
       {visibleTransactions.map((t, i) => {
         let displayType = t.type;
-        if (t.category === "Transfer" && scope?.type === "current" && scope?.name) {
+        if (isAccountTransfer(t) && scope?.type === "current" && scope?.name) {
           if (t.transferAccount === scope.name) displayType = "income";
           if (t.currentAccount === scope.name) displayType = "expense";
         }
+        const showTransferDetails = isAccountTransfer(t);
         return (
           <li 
             key={t.id || i} 
@@ -309,11 +317,11 @@ export default function TransactionList({
                             ? savingAccounts[0] || ""
                             : prev.savingAccount,
                         transferAccount:
-                          next === "Transfer"
+                          next === "Account Transfer"
                             ? currentAccounts[0] || ""
                             : prev.transferAccount,
                         isPrelevement:
-                          next === "Transfer" ? false : prev.isPrelevement,
+                          next === "Account Transfer" ? false : prev.isPrelevement,
                       };
                     })
                   }
@@ -344,7 +352,7 @@ export default function TransactionList({
                   </select>
                 </div>
               )}
-              {formState.category === "Transfer" && (
+              {formState.category === "Account Transfer" && (
                 <div className="edit-row">
                   <select
                     value={formState.transferAccount}
@@ -408,7 +416,7 @@ export default function TransactionList({
                         type: next ? "expense" : prev.type,
                       }));
                     }}
-                    disabled={formState.category === "Transfer"}
+                    disabled={formState.category === "Account Transfer"}
                   />
                   <span className="edit-prelevement-pill" aria-hidden="true">
                     <span className="edit-prelevement-dot" />
@@ -465,7 +473,7 @@ export default function TransactionList({
                     {displayType === "income" ? i18n.income : i18n.outcome}
                   </span>
                 )}
-                {t.category !== "Saving" && t.category !== "Transfer" && (t.currentAccount || t.accountName) && (
+                {t.category !== "Saving" && !showTransferDetails && (t.currentAccount || t.accountName) && (
                   <span className="transaction-account">
                     {t.currentAccount || t.accountName}
                   </span>
@@ -477,7 +485,7 @@ export default function TransactionList({
                       : `${t.currentAccount || currentAccounts[0] || i18n.current} → ${t.savingAccount || t.accountName || i18n.savings}`}
                   </span>
                 )}
-                {t.category === "Transfer" && (
+                {showTransferDetails && (
                   <span className="transaction-transfer">
                     {t.type === "income"
                       ? `${t.transferAccount || i18n.current} → ${t.currentAccount || currentAccounts[0] || i18n.current}`
