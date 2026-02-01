@@ -25,6 +25,17 @@
   letter-spacing: 0.12em;
   color: var(--muted);
   font-weight: 600;
+  min-width: 180px;
+}
+
+.control-label .category-picker {
+  width: 100%;
+  min-width: 180px;
+}
+
+.control-label .category-trigger,
+.control-label .category-menu {
+  min-width: 180px;
 }
 
 .control-label select {
@@ -70,6 +81,12 @@ body.theme-dark .control-label select {
   }
   
   .control-label select {
+    width: 100%;
+  }
+
+  .control-label .category-picker,
+  .control-label .category-trigger,
+  .control-label .category-menu {
     width: 100%;
   }
 }
