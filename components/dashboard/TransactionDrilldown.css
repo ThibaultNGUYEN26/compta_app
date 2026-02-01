@@ -132,6 +132,11 @@ body.theme-dark .transaction-drilldown .chart-title {
 
 .drilldown-table td {
   padding: 12px 14px;
+  border-bottom: none;
+  vertical-align: top;
+}
+
+.drilldown-table tbody tr {
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
 }
 
@@ -139,7 +144,7 @@ body.theme-dark .transaction-drilldown .chart-title {
   background: rgba(37, 99, 235, 0.04);
 }
 
-.drilldown-table tbody tr:last-child td {
+.drilldown-table tbody tr:last-child {
   border-bottom: none;
 }
 
@@ -187,6 +192,7 @@ body.theme-dark .transaction-drilldown .chart-title {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  align-items: flex-start;
 }
 
 .tag {
@@ -195,6 +201,8 @@ body.theme-dark .transaction-drilldown .chart-title {
   font-size: 0.7rem;
   font-weight: 600;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
 }
 
 .tag-prelevement {
@@ -236,6 +244,10 @@ body.theme-dark .drilldown-table thead {
 
 body.theme-dark .drilldown-table tbody tr:hover {
   background: rgba(59, 130, 246, 0.12);
+}
+
+body.theme-dark .drilldown-table tbody tr {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 body.theme-dark .tag-saving {
