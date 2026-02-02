@@ -1,4 +1,5 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const fsp = require("fs/promises");
@@ -12,7 +13,7 @@ let devServerProcess = null;
 
 function getBaseDataDir() {
   if (app.isPackaged) {
-    return path.join(path.dirname(app.getPath("exe")), "data");
+    return path.join(app.getPath("userData"), "data");
   }
   return path.join(process.cwd(), "data");
 }
@@ -161,8 +162,37 @@ async function createWindow() {
   });
 
   win.setMenu(null);
+  if (app.isPackaged) {
+    win.webContents.openDevTools({ mode: "detach" });
+  }
 
   await loadRenderer(win);
+
+  if (app.isPackaged) {
+    configureAutoUpdates(win);
+  }
+}
+
+function configureAutoUpdates(win) {
+  autoUpdater.autoDownload = true;
+  autoUpdater.on("error", (err) => {
+    console.error("Auto updater error:", err);
+  });
+  autoUpdater.on("update-downloaded", async () => {
+    const result = await dialog.showMessageBox(win, {
+      type: "info",
+      buttons: ["Restart now", "Later"],
+      defaultId: 0,
+      message: "A new update is ready to install.",
+      detail: "Restart the app to apply the update.",
+    });
+    if (result.response === 0) {
+      autoUpdater.quitAndInstall();
+    }
+  });
+  autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+    console.error("Auto update check failed:", err);
+  });
 }
 
 app.whenReady().then(() => {
