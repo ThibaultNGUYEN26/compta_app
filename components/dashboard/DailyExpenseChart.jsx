@@ -3,6 +3,8 @@ import "./DailyExpenseChart.css";
 
 export default function DailyExpenseChart({
   dailyExpenses,
+  monthlyIncome = 0,
+  monthlyOutcome = 0,
   selectedYear,
   selectedMonth,
   maskAmounts = false,
@@ -13,6 +15,9 @@ export default function DailyExpenseChart({
       title: "Sorties quotidiennes",
       empty: "Aucune sortie pour cette période.",
       max: "Max",
+      incomeLine: "Revenus",
+      balanceLine: "Reste",
+      overspent: "Dépassement",
       day: "Jour",
       total: "Total",
       average: "Moyenne",
@@ -23,6 +28,9 @@ export default function DailyExpenseChart({
       title: "Daily Expenses",
       empty: "No expense data for this period.",
       max: "Max",
+      incomeLine: "Income",
+      balanceLine: "Remaining",
+      overspent: "Overspent",
       day: "Day",
       total: "Total",
       average: "Average",
@@ -51,6 +59,10 @@ export default function DailyExpenseChart({
   }
 
   const maxExpense = Math.max(...dailyExpenses.map(d => d.amount), 1);
+  const incomeTotal = Math.max(0, Number(monthlyIncome) || 0);
+  const outcomeTotal = Math.max(0, Number(monthlyOutcome) || 0);
+  const netTotal = incomeTotal - outcomeTotal;
+  const maxScale = Math.max(maxExpense, incomeTotal, outcomeTotal, 1);
   
   // Calculate the number of days in the selected month/year
   const year = Number(selectedYear);
@@ -86,9 +98,14 @@ export default function DailyExpenseChart({
 
   const points = dailyExpenses.map((d) => {
     const x = chartPaddingX + ((d.day - minDay) / dayRange) * usableWidth;
-    const y = chartBottom - ((d.amount / maxExpense) * usableHeight);
+    const y = chartBottom - ((d.amount / maxScale) * usableHeight);
     return `${x},${y}`;
   }).join(" ");
+
+  const incomeY = chartBottom - ((incomeTotal / maxScale) * usableHeight);
+  const netClamped = Math.max(netTotal, 0);
+  const netY = chartBottom - ((netClamped / maxScale) * usableHeight);
+  const isOverspent = netTotal < 0;
 
   return (
     <div className="daily-expense-chart">
@@ -97,6 +114,16 @@ export default function DailyExpenseChart({
         <span className="chart-period">{dateRange}</span>
         <span className="chart-max">
           {t.max}: {renderEuro(maxExpense)}
+        </span>
+      </div>
+      <div className="chart-legend">
+        <span className="legend-item income">
+          {t.incomeLine}: {renderEuro(incomeTotal)}
+        </span>
+        <span className={`legend-item balance${isOverspent ? " is-overspent" : ""}`}>
+          {isOverspent
+            ? `${t.overspent}: ${renderEuro(Math.abs(netTotal))}`
+            : `${t.balanceLine}: ${renderEuro(netTotal)}`}
         </span>
       </div>
       
@@ -114,6 +141,22 @@ export default function DailyExpenseChart({
             points={`${chartPaddingX},${chartBottom} ${points} ${100 - chartPaddingX},${chartBottom}`}
             className="line-area"
           />
+
+          {/* Income and balance lines */}
+          <line
+            x1={chartPaddingX}
+            y1={incomeY}
+            x2={100 - chartPaddingX}
+            y2={incomeY}
+            className="income-line"
+          />
+          <line
+            x1={chartPaddingX}
+            y1={netY}
+            x2={100 - chartPaddingX}
+            y2={netY}
+            className={`balance-line${isOverspent ? " is-overspent" : ""}`}
+          />
           
           {/* Line */}
           <polyline
@@ -125,7 +168,7 @@ export default function DailyExpenseChart({
         {/* Data points */}
         {dailyExpenses.map((d) => {
           const x = chartPaddingX + ((d.day - minDay) / dayRange) * usableWidth;
-          const y = chartBottom - ((d.amount / maxExpense) * usableHeight);
+          const y = chartBottom - ((d.amount / maxScale) * usableHeight);
           const displayDate = hasMonthSelected
             ? `${monthName} ${d.day}`
             : `${t.day} ${d.day}`;
@@ -196,3 +239,12 @@ function getMonthName(month, locale) {
   const date = new Date(2020, monthIndex, 1);
   return date.toLocaleString(locale || "en-US", { month: "long" });
 }
+
+
+
+
+
+
+
+
+

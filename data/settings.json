@@ -1,6 +1,7 @@
 {
-  "language": "en",
-  "theme": "dark",
+  "language": "fr",
+  "theme": "light",
+  "hideAmounts": false,
   "accounts": {
     "current": [
       "Current account"

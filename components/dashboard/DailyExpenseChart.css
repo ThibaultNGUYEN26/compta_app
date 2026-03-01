@@ -20,6 +20,33 @@
   color: var(--text-secondary, #666);
 }
 
+.chart-legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #666);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.legend-item.income {
+  color: var(--income-color, #16a34a);
+}
+
+.legend-item.balance {
+  color: var(--text-primary, #1a1a1a);
+}
+
+.legend-item.balance.is-overspent {
+  color: var(--expense-color, #e74c3c);
+}
+
 .chart-period {
   font-weight: 500;
   color: var(--text-primary, #1a1a1a);
@@ -72,6 +99,24 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
+}
+
+.income-line {
+  stroke: var(--income-color, #16a34a);
+  stroke-width: 0.6;
+  stroke-dasharray: 2 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.balance-line {
+  stroke: var(--text-primary, #1a1a1a);
+  stroke-width: 0.6;
+  stroke-dasharray: 3 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.balance-line.is-overspent {
+  stroke: var(--expense-color, #e74c3c);
 }
 
 .line-point-dot {
@@ -153,6 +198,7 @@ body.theme-dark .daily-expense-chart {
   --text-primary: #e2e8f0;
   --text-secondary: #94a3b8;
   --expense-color: #f87171;
+  --income-color: #22c55e;
 }
 
 body.theme-dark .daily-expense-chart .chart-title {

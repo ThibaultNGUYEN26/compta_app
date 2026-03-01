@@ -154,6 +154,7 @@ export default function App() {
       );
       setLanguage(rest.language || "fr");
       setTheme(rest.theme || "light");
+      setHideRecentAmounts(Boolean(rest.hideAmounts));
       setSettingsMeta(rest);
       if (window.comptaApi?.getAppVersion) {
         const version = await window.comptaApi.getAppVersion();
@@ -197,13 +198,15 @@ export default function App() {
     nextSavingLinks,
     nextCategories,
     nextLanguage,
-    nextTheme
+    nextTheme,
+    nextHideAmounts
   ) => {
     if (!window.comptaApi?.saveSettings) return;
     return window.comptaApi.saveSettings({
       ...settingsMeta,
       language: nextLanguage,
       theme: nextTheme,
+      hideAmounts: nextHideAmounts,
       accounts: {
         current: nextCurrent,
         saving: nextSaving,
@@ -251,7 +254,8 @@ export default function App() {
       savingLinks,
       categories,
       language,
-      theme
+      theme,
+      hideRecentAmounts
     );
   }, [
     accountsLoaded,
@@ -261,6 +265,7 @@ export default function App() {
     categories,
     language,
     theme,
+    hideRecentAmounts,
     settingsMeta,
   ]);
 

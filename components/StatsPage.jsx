@@ -15,6 +15,8 @@ import {
   computeMonthlySeries,
   computeSavingsBySavingAccount,
   computeDailyExpenses,
+  isRealIncome,
+  isRealOutcome,
 } from "../utils/dashboardUtils";
 import "./StatsPage.css";
 
@@ -151,6 +153,20 @@ export default function StatsPage({
     return computeDailyExpenses(filteredTransactions);
   }, [filteredTransactions]);
 
+  const monthlyIncome = useMemo(() => {
+    return filteredTransactions.reduce((sum, t) => {
+      if (!isRealIncome(t)) return sum;
+      return sum + Math.abs(Number(t.amount) || 0);
+    }, 0);
+  }, [filteredTransactions]);
+
+  const monthlyOutcome = useMemo(() => {
+    return filteredTransactions.reduce((sum, t) => {
+      if (!isRealOutcome(t)) return sum;
+      return sum + Math.abs(Number(t.amount) || 0);
+    }, 0);
+  }, [filteredTransactions]);
+
   return (
     <div className="stats-page">
       <DashboardControls
@@ -203,6 +219,8 @@ export default function StatsPage({
           <div className="stats-full-width">
             <DailyExpenseChart 
               dailyExpenses={dailyExpenses}
+              monthlyIncome={monthlyIncome}
+              monthlyOutcome={monthlyOutcome}
               selectedYear={selectedYear}
               selectedMonth={selectedMonth}
               maskAmounts={maskAmounts}
