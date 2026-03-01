@@ -41,6 +41,11 @@ export default function App() {
     currentPath: "",
     isCustom: false,
   });
+  const [updateStatus, setUpdateStatus] = useState({
+    status: "idle",
+    progress: null,
+    message: "",
+  });
   const [showAccounts, setShowAccounts] = useState(false);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [selectedCurrentAccount, setSelectedCurrentAccount] = useState(
@@ -56,7 +61,23 @@ export default function App() {
     en: { title: "Accounts", close: "Close" },
   };
   const settingsText = settingsLabels[language] || settingsLabels.fr;
-
+  const updateLabels = {
+    fr: {
+      available: "Mise a jour disponible. Telechargement...",
+      downloading: "Telechargement de la mise a jour",
+      downloaded: "Mise a jour prete. Redemarrer pour installer.",
+      error: "Erreur de mise a jour",
+      restart: "Redemarrer",
+    },
+    en: {
+      available: "Update available. Downloading...",
+      downloading: "Downloading update",
+      downloaded: "Update ready. Restart to install.",
+      error: "Update error",
+      restart: "Restart",
+    },
+  };
+  const updateText = updateLabels[language] || updateLabels.fr;
   const homeLabels = {
     fr: {
       newTransaction: "Nouvelle transaction",
@@ -221,6 +242,22 @@ export default function App() {
       currentAccounts.includes(prev) ? prev : currentAccounts[0]
     );
   }, [currentAccounts]);
+
+  useEffect(() => {
+    if (!window.comptaApi?.onUpdateStatus) return undefined;
+    const unsubscribe = window.comptaApi.onUpdateStatus((payload) => {
+      if (!payload?.status) return;
+      setUpdateStatus((prev) => ({
+        ...prev,
+        status: payload.status,
+        progress: payload.progress || null,
+        message: payload.message || "",
+      }));
+    });
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     const handleOutside = (event) => {
@@ -505,6 +542,35 @@ export default function App() {
           </button>
         </div>
       </header>
+      {updateStatus.status !== "idle" &&
+        updateStatus.status !== "none" &&
+        updateStatus.status !== "checking" && (
+          <div className="update-banner" role="status">
+            <div className="update-banner-text">
+              {updateStatus.status === "available" && updateText.available}
+              {updateStatus.status === "downloading" &&
+                `${updateText.downloading}${
+                  updateStatus.progress?.percent
+                    ? ` (${Math.round(updateStatus.progress.percent)}%)`
+                    : ""
+                }`}
+              {updateStatus.status === "downloaded" && updateText.downloaded}
+              {updateStatus.status === "error" &&
+                `${updateText.error}${
+                  updateStatus.message ? `: ${updateStatus.message}` : ""
+                }`}
+            </div>
+            {updateStatus.status === "downloaded" && (
+              <button
+                type="button"
+                className="update-banner-action"
+                onClick={() => window.comptaApi?.installUpdate?.()}
+              >
+                {updateText.restart}
+              </button>
+            )}
+          </div>
+        )}
       {showAccounts && (
         <div
           className="modal-overlay"
@@ -649,3 +715,9 @@ export default function App() {
     </div>
   );
 }
+
+
+
+
+
+

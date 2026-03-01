@@ -200,20 +200,39 @@ async function createWindow() {
 
 function configureAutoUpdates(win) {
   autoUpdater.autoDownload = true;
+  autoUpdater.on("checking-for-update", () => {
+    win.webContents.send("update:status", { status: "checking" });
+  });
+  autoUpdater.on("update-available", (info) => {
+    win.webContents.send("update:status", {
+      status: "available",
+      info,
+    });
+  });
+  autoUpdater.on("update-not-available", (info) => {
+    win.webContents.send("update:status", {
+      status: "none",
+      info,
+    });
+  });
+  autoUpdater.on("download-progress", (progress) => {
+    win.webContents.send("update:status", {
+      status: "downloading",
+      progress,
+    });
+  });
+  autoUpdater.on("update-downloaded", (info) => {
+    win.webContents.send("update:status", {
+      status: "downloaded",
+      info,
+    });
+  });
   autoUpdater.on("error", (err) => {
     console.error("Auto updater error:", err);
-  });
-  autoUpdater.on("update-downloaded", async () => {
-    const result = await dialog.showMessageBox(win, {
-      type: "info",
-      buttons: ["Restart now", "Later"],
-      defaultId: 0,
-      message: "A new update is ready to install.",
-      detail: "Restart the app to apply the update.",
+    win.webContents.send("update:status", {
+      status: "error",
+      message: err?.message || String(err),
     });
-    if (result.response === 0) {
-      autoUpdater.quitAndInstall();
-    }
   });
   autoUpdater.checkForUpdatesAndNotify().catch((err) => {
     console.error("Auto update check failed:", err);
@@ -405,6 +424,11 @@ app.whenReady().then(() => {
     }
     const defaultPath = getDefaultDataDir();
     return { defaultPath, currentPath: defaultPath, isCustom: false };
+  });
+
+  ipcMain.handle("update:install", async () => {
+    autoUpdater.quitAndInstall();
+    return { ok: true };
   });
 
   createWindow();
