@@ -14,9 +14,30 @@
 
 .account-settings-row {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.account-settings-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.account-settings-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.account-settings-version {
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .account-path-row {

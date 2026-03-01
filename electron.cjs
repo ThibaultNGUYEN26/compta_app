@@ -426,6 +426,8 @@ app.whenReady().then(() => {
     return { defaultPath, currentPath: defaultPath, isCustom: false };
   });
 
+  ipcMain.handle("app:getVersion", async () => app.getVersion());
+
   ipcMain.handle("update:install", async () => {
     autoUpdater.quitAndInstall();
     return { ok: true };

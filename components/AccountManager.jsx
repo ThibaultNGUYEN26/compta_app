@@ -11,6 +11,7 @@ export default function AccountManager({
   dataPathInfo,
   onSelectDataPath,
   onResetDataPath,
+  appVersion = "-",
   onAddCurrent,
   onAddSaving,
   onRenameCurrent,
@@ -49,6 +50,7 @@ export default function AccountManager({
       dataPath: "Dossier des donnees",
       changePath: "Changer",
       resetPath: "Reinitialiser",
+      version: "Version",
     },
     en: {
       subtitle: "Manage your current and saving accounts.",
@@ -74,6 +76,7 @@ export default function AccountManager({
       dataPath: "Data folder",
       changePath: "Change",
       resetPath: "Reset",
+      version: "Version",
     },
   };
 
@@ -119,28 +122,34 @@ export default function AccountManager({
   return (
     <div className={`account-manager${language === "en" ? " is-en" : ""}`}>
       <div className="account-settings-row">
-        <label className="account-settings-label">
-          {t.language}
-          <select
-            value={language}
-            onChange={(e) => onLanguageChange?.(e.target.value)}
-          >
-            <option value="fr">{t.fr}</option>
-            <option value="en">{t.en}</option>
-          </select>
-        </label>
-        <label className="account-settings-label">
-          {t.theme}
-          <button
-            type="button"
-            className="account-toggle"
-            onClick={() =>
-              onThemeChange?.(theme === "dark" ? "light" : "dark")
-            }
-          >
-            {theme === "dark" ? t.dark : t.light}
-          </button>
-        </label>
+        <div className="account-settings-left">
+          <label className="account-settings-label">
+            {t.language}
+            <select
+              value={language}
+              onChange={(e) => onLanguageChange?.(e.target.value)}
+            >
+              <option value="fr">{t.fr}</option>
+              <option value="en">{t.en}</option>
+            </select>
+          </label>
+          <label className="account-settings-label">
+            {t.theme}
+            <button
+              type="button"
+              className="account-toggle"
+              onClick={() =>
+                onThemeChange?.(theme === "dark" ? "light" : "dark")
+              }
+            >
+              {theme === "dark" ? t.dark : t.light}
+            </button>
+          </label>
+        </div>
+        <div className="account-settings-right">
+          <span className="account-settings-caption">{t.version}</span>
+          <span className="account-settings-version">{appVersion}</span>
+        </div>
       </div>
       <div className="account-path-row">
         <div className="account-path-label">

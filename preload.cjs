@@ -15,4 +15,5 @@ contextBridge.exposeInMainWorld("comptaApi", {
     return () => ipcRenderer.removeListener("update:status", listener);
   },
   installUpdate: () => ipcRenderer.invoke("update:install"),
+  getAppVersion: () => ipcRenderer.invoke("app:getVersion"),
 });

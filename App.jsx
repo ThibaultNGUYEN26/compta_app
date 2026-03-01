@@ -46,6 +46,7 @@ export default function App() {
     progress: null,
     message: "",
   });
+  const [appVersion, setAppVersion] = useState("-");
   const [showAccounts, setShowAccounts] = useState(false);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [selectedCurrentAccount, setSelectedCurrentAccount] = useState(
@@ -135,6 +136,12 @@ export default function App() {
       setLanguage(rest.language || "fr");
       setTheme(rest.theme || "light");
       setSettingsMeta(rest);
+      if (window.comptaApi?.getAppVersion) {
+        const version = await window.comptaApi.getAppVersion();
+        if (!cancelled && version) {
+          setAppVersion(version);
+        }
+      }
       if (window.comptaApi?.getDataPath) {
         const info = await window.comptaApi.getDataPath();
         if (!cancelled && info) {
@@ -599,6 +606,7 @@ export default function App() {
               categories={categories}
               language={language}
               theme={theme}
+              appVersion={appVersion}
               dataPathInfo={dataPathInfo}
               onSelectDataPath={handleSelectDataPath}
               onResetDataPath={handleResetDataPath}
@@ -715,6 +723,12 @@ export default function App() {
     </div>
   );
 }
+
+
+
+
+
+
 
 
 
