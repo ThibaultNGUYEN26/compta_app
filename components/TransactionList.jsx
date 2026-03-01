@@ -17,6 +17,7 @@ const DEFAULT_CATEGORIES = [
   "Transfer",
   "Account Transfer",
   "Saving",
+  "Shopping",
   "Other",
 ];
 
@@ -59,6 +60,7 @@ export default function TransactionList({
         "Education/Work": "Éducation/Travail",
         "Gifts/Donations": "Cadeaux/Donations",
         Salary: "Salaire",
+        Shopping: "Shopping",
         Other: "Autre",
         Transfer: "Virement",
         "Account Transfer": "Transfère",
@@ -91,6 +93,7 @@ export default function TransactionList({
         "Education/Work": "Education/Work",
         "Gifts/Donations": "Gifts/Donations",
         Salary: "Salary",
+        Shopping: "Shopping",
         Other: "Other",
         Transfer: "Transfer",
         "Account Transfer": "Account Transfer",
@@ -100,7 +103,34 @@ export default function TransactionList({
   };
   const i18n = labels[language] || labels.fr;
 
-  const categoryOptions = categories.length ? categories : DEFAULT_CATEGORIES;
+  const categoryOptions = useMemo(() => {
+    const list = (categories.length ? categories : DEFAULT_CATEGORIES).slice();
+    const tailOrder = ["Salary", "Saving", "Account Transfer", "Other"];
+    const tailSet = new Set(tailOrder.map((name) => name.toLowerCase()));
+    const tailItems = [];
+    const mainItems = [];
+    list.forEach((item) => {
+      const key = String(item).toLowerCase();
+      if (tailSet.has(key)) {
+        tailItems.push(item);
+      } else {
+        mainItems.push(item);
+      }
+    });
+    mainItems.sort((a, b) => {
+      const labelA = i18n.categories?.[a] || String(a);
+      const labelB = i18n.categories?.[b] || String(b);
+      return labelA.localeCompare(labelB, undefined, { sensitivity: "base" });
+    });
+    const orderedTail = tailOrder
+      .map((name) =>
+        tailItems.find(
+          (item) => String(item).toLowerCase() === name.toLowerCase()
+        )
+      )
+      .filter(Boolean);
+    return [...mainItems, ...orderedTail];
+  }, [categories, i18n.categories]);
   const [editingId, setEditingId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [formState, setFormState] = useState({

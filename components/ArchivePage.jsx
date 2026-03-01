@@ -95,10 +95,12 @@ export default function ArchivePage({
   }, [archiveData, selectedYear, selectedMonth]);
 
   const scopeOptions = useMemo(() => {
-    return (currentAccounts || []).map((name) => ({
-      value: `current::${name}`,
-      label: name,
-    }));
+    return (currentAccounts || [])
+      .filter((name) => name !== "Current account")
+      .map((name) => ({
+        value: `current::${name}`,
+        label: name,
+      }));
   }, [currentAccounts]);
 
   useEffect(() => {

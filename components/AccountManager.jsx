@@ -67,7 +67,7 @@ export default function AccountManager({
         Shopping: "Shopping",
         Other: "Autre",
         Transfer: "Virement",
-        "Account Transfer": "Transfere",
+        "Account Transfer": "Transfère",
         Saving: "Epargne",
       },
     },
@@ -132,6 +132,34 @@ export default function AccountManager({
 
   const currentDataPath = dataPathInfo?.currentPath || "";
   const isCustomPath = Boolean(dataPathInfo?.isCustom);
+  const sortedCategories = React.useMemo(() => {
+    const list = Array.isArray(categories) ? [...categories] : [];
+    const tailOrder = ["Salary", "Saving", "Account Transfer", "Other"];
+    const tailSet = new Set(tailOrder.map((name) => name.toLowerCase()));
+    const tailItems = [];
+    const mainItems = [];
+    list.forEach((item) => {
+      const key = String(item).toLowerCase();
+      if (tailSet.has(key)) {
+        tailItems.push(item);
+      } else {
+        mainItems.push(item);
+      }
+    });
+    mainItems.sort((a, b) => {
+      const labelA = t.categories?.[a] || String(a);
+      const labelB = t.categories?.[b] || String(b);
+      return labelA.localeCompare(labelB, undefined, { sensitivity: "base" });
+    });
+    const orderedTail = tailOrder
+      .map((name) =>
+        tailItems.find(
+          (item) => String(item).toLowerCase() === name.toLowerCase()
+        )
+      )
+      .filter(Boolean);
+    return [...mainItems, ...orderedTail];
+  }, [categories, t.categories]);
 
   const submitCurrent = (e) => {
     e.preventDefault();
@@ -229,6 +257,15 @@ export default function AccountManager({
                       type="text"
                       value={editingCurrentValue}
                       onChange={(e) => setEditingCurrentValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        const trimmed = editingCurrentValue.trim();
+                        if (!trimmed) return;
+                        onRenameCurrent?.(index, trimmed);
+                        setEditingCurrentIndex(null);
+                        setEditingCurrentValue("");
+                      }}
                     />
                     <div className="account-actions">
                       <button
@@ -314,6 +351,15 @@ export default function AccountManager({
                       type="text"
                       value={editingSavingValue}
                       onChange={(e) => setEditingSavingValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        const trimmed = editingSavingValue.trim();
+                        if (!trimmed) return;
+                        onRenameSaving?.(index, trimmed);
+                        setEditingSavingIndex(null);
+                        setEditingSavingValue("");
+                      }}
                     />
                     <div className="account-actions">
                       <button
@@ -405,7 +451,7 @@ export default function AccountManager({
           <h3>{t.categoryTitle}</h3>
           <p className="account-subtitle">{t.categoriesSubtitle}</p>
           <ul>
-            {categories.map((name, index) => {
+            {sortedCategories.map((name, index) => {
               const displayName = t.categories?.[name] || name;
               return (
               <li
@@ -419,6 +465,15 @@ export default function AccountManager({
                       type="text"
                       value={editingCategoryValue}
                       onChange={(e) => setEditingCategoryValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        const trimmed = editingCategoryValue.trim();
+                        if (!trimmed) return;
+                        onRenameCategory?.(index, trimmed);
+                        setEditingCategoryIndex(null);
+                        setEditingCategoryValue("");
+                      }}
                     />
                     <div className="account-actions">
                       <button

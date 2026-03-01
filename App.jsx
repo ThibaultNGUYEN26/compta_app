@@ -513,18 +513,25 @@ export default function App() {
 
   const sortCategories = React.useCallback((list) => {
     const items = Array.isArray(list) ? [...list] : [];
-    const otherIndex = items.findIndex(
-      (name) => String(name).toLowerCase() === "other"
-    );
-    let other = null;
-    if (otherIndex !== -1) {
-      other = items.splice(otherIndex, 1)[0];
-    }
-    items.sort((a, b) =>
+    const tailOrder = ["Salary", "Saving", "Account Transfer", "Other"];
+    const tailSet = new Set(tailOrder.map((name) => name.toLowerCase()));
+    const tailItems = [];
+    const mainItems = [];
+    items.forEach((item) => {
+      const key = String(item).toLowerCase();
+      if (tailSet.has(key)) {
+        tailItems.push(item);
+      } else {
+        mainItems.push(item);
+      }
+    });
+    mainItems.sort((a, b) =>
       String(a).localeCompare(String(b), undefined, { sensitivity: "base" })
     );
-    if (other !== null) items.push(other);
-    return items;
+    const orderedTail = tailOrder
+      .map((name) => tailItems.find((item) => String(item).toLowerCase() === name.toLowerCase()))
+      .filter(Boolean);
+    return [...mainItems, ...orderedTail];
   }, []);
 
   const sortedCategories = React.useMemo(() => {

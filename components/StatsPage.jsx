@@ -60,7 +60,8 @@ export default function StatsPage({
       }
     }
 
-    const current = Array.from(currentSet).filter(Boolean);
+    const current = Array.from(currentSet)
+      .filter((name) => Boolean(name) && name !== "Current account");
     const saving = Array.from(savingSet).filter(Boolean);
     if (!current.length) current.push("Current account");
     return { current, saving };

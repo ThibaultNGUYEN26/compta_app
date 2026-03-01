@@ -1,9 +1,9 @@
 {
-  "language": "fr",
+  "language": "en",
   "theme": "light",
   "accounts": {
     "current": [
-      "Truc"
+      "Current account"
     ],
     "saving": [],
     "savingLinks": {}

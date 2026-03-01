@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import "./TransactionForm.css";
 
 const DEFAULT_CATEGORIES = [
@@ -31,6 +31,7 @@ export default function TransactionForm({
   categories = DEFAULT_CATEGORIES,
   language = "fr",
 }) {
+  const nameInputRef = useRef(null);
   const labels = {
     fr: {
       dateLabel: "Date",
@@ -101,7 +102,34 @@ export default function TransactionForm({
   const safeInitial = initialValues || {};
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  const categoryOptions = categories.length ? categories : DEFAULT_CATEGORIES;
+  const categoryOptions = useMemo(() => {
+    const list = (categories.length ? categories : DEFAULT_CATEGORIES).slice();
+    const tailOrder = ["Salary", "Saving", "Account Transfer", "Other"];
+    const tailSet = new Set(tailOrder.map((name) => name.toLowerCase()));
+    const tailItems = [];
+    const mainItems = [];
+    list.forEach((item) => {
+      const key = String(item).toLowerCase();
+      if (tailSet.has(key)) {
+        tailItems.push(item);
+      } else {
+        mainItems.push(item);
+      }
+    });
+    mainItems.sort((a, b) => {
+      const labelA = t.categories?.[a] || String(a);
+      const labelB = t.categories?.[b] || String(b);
+      return labelA.localeCompare(labelB, undefined, { sensitivity: "base" });
+    });
+    const orderedTail = tailOrder
+      .map((name) =>
+        tailItems.find(
+          (item) => String(item).toLowerCase() === name.toLowerCase()
+        )
+      )
+      .filter(Boolean);
+    return [...mainItems, ...orderedTail];
+  }, [categories, t.categories]);
   const [category, setCategory] = useState(categoryOptions[0] || "Other");
   const [type, setType] = useState("expense");
   const [isPrelevement, setIsPrelevement] = useState(false);
@@ -141,6 +169,9 @@ export default function TransactionForm({
       setCurrentAccount(
         selectedCurrentAccount || currentAccounts[0] || "Current account"
       );
+      requestAnimationFrame(() => {
+        nameInputRef.current?.focus();
+      });
       return;
     }
     setName(safeInitial.name || "");
@@ -258,6 +289,7 @@ export default function TransactionForm({
       />
       <input
         type="text"
+        ref={nameInputRef}
         placeholder={t.namePlaceholder}
         value={name}
         onChange={(e) => setName(e.target.value)}
