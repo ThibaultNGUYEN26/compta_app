@@ -36,6 +36,11 @@ export default function App() {
   const [language, setLanguage] = useState("fr");
   const [theme, setTheme] = useState("light");
   const [settingsMeta, setSettingsMeta] = useState({});
+  const [dataPathInfo, setDataPathInfo] = useState({
+    defaultPath: "",
+    currentPath: "",
+    isCustom: false,
+  });
   const [showAccounts, setShowAccounts] = useState(false);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [selectedCurrentAccount, setSelectedCurrentAccount] = useState(
@@ -109,6 +114,12 @@ export default function App() {
       setLanguage(rest.language || "fr");
       setTheme(rest.theme || "light");
       setSettingsMeta(rest);
+      if (window.comptaApi?.getDataPath) {
+        const info = await window.comptaApi.getDataPath();
+        if (!cancelled && info) {
+          setDataPathInfo(info);
+        }
+      }
       if (Array.isArray(savedCategories) && savedCategories.length) {
         const merged = new Set(savedCategories);
         merged.add("Transfer");
@@ -151,6 +162,31 @@ export default function App() {
         savingLinks: nextSavingLinks,
       },
       categories: nextCategories,
+    });
+  };
+
+  const handleSelectDataPath = async () => {
+    if (!window.comptaApi?.selectDataPath) return;
+    const info = await window.comptaApi.selectDataPath();
+    if (!info) return;
+    setDataPathInfo(info);
+    setSettingsMeta((prev) => ({
+      ...prev,
+      dataPath: info.isCustom ? info.currentPath : undefined,
+    }));
+  };
+
+  const handleResetDataPath = async () => {
+    if (!window.comptaApi?.resetDataPath) return;
+    const info = await window.comptaApi.resetDataPath();
+    if (!info) return;
+    setDataPathInfo(info);
+    setSettingsMeta((prev) => {
+      const next = { ...prev };
+      if (Object.prototype.hasOwnProperty.call(next, "dataPath")) {
+        delete next.dataPath;
+      }
+      return next;
     });
   };
 
@@ -497,6 +533,9 @@ export default function App() {
               categories={categories}
               language={language}
               theme={theme}
+              dataPathInfo={dataPathInfo}
+              onSelectDataPath={handleSelectDataPath}
+              onResetDataPath={handleResetDataPath}
               onAddCurrent={addCurrentAccount}
               onAddSaving={addSavingAccount}
               onRenameCurrent={renameCurrentAccount}

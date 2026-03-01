@@ -1,5 +1,5 @@
 __pycache__/
-data/settings.json
+# data/settings.json
 data/Compta_*.json
 
 # =========================
@@ -16,6 +16,7 @@ package-lock.json
 # Build outputs
 # =========================
 dist/
+dist_electron/
 build/
 out/
 release/

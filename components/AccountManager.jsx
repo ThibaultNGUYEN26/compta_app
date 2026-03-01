@@ -8,6 +8,9 @@ export default function AccountManager({
   categories = [],
   language = "fr",
   theme = "light",
+  dataPathInfo,
+  onSelectDataPath,
+  onResetDataPath,
   onAddCurrent,
   onAddSaving,
   onRenameCurrent,
@@ -43,6 +46,9 @@ export default function AccountManager({
       theme: "Thème",
       light: "Clair",
       dark: "Sombre",
+      dataPath: "Dossier des donnees",
+      changePath: "Changer",
+      resetPath: "Reinitialiser",
     },
     en: {
       subtitle: "Manage your current and saving accounts.",
@@ -65,6 +71,9 @@ export default function AccountManager({
       theme: "Theme",
       light: "Light",
       dark: "Dark",
+      dataPath: "Data folder",
+      changePath: "Change",
+      resetPath: "Reset",
     },
   };
 
@@ -79,6 +88,9 @@ export default function AccountManager({
   const [categoryName, setCategoryName] = useState("");
   const [editingCategoryIndex, setEditingCategoryIndex] = useState(null);
   const [editingCategoryValue, setEditingCategoryValue] = useState("");
+
+  const currentDataPath = dataPathInfo?.currentPath || "";
+  const isCustomPath = Boolean(dataPathInfo?.isCustom);
 
   const submitCurrent = (e) => {
     e.preventDefault();
@@ -129,6 +141,27 @@ export default function AccountManager({
             {theme === "dark" ? t.dark : t.light}
           </button>
         </label>
+      </div>
+      <div className="account-path-row">
+        <div className="account-path-label">
+          <span className="account-path-title">{t.dataPath}</span>
+          <span className="account-path-value" title={currentDataPath}>
+            {currentDataPath || "-"}
+          </span>
+        </div>
+        <div className="account-path-actions">
+          <button type="button" onClick={onSelectDataPath}>
+            {t.changePath}
+          </button>
+          <button
+            type="button"
+            className="account-path-reset"
+            onClick={onResetDataPath}
+            disabled={!isCustomPath}
+          >
+            {t.resetPath}
+          </button>
+        </div>
       </div>
       <p className="account-subtitle">
         {t.subtitle}
@@ -411,3 +444,7 @@ export default function AccountManager({
     </div>
   );
 }
+
+
+
+

@@ -6,4 +6,7 @@ contextBridge.exposeInMainWorld("comptaApi", {
     ipcRenderer.invoke("transactions:save", transactions),
   loadSettings: () => ipcRenderer.invoke("settings:load"),
   saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
+  getDataPath: () => ipcRenderer.invoke("data-path:get"),
+  selectDataPath: () => ipcRenderer.invoke("data-path:select"),
+  resetDataPath: () => ipcRenderer.invoke("data-path:reset"),
 });

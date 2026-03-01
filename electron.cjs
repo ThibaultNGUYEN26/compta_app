@@ -11,19 +11,37 @@ const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL || "http://localhost:5173
 const DIST_INDEX = path.join(__dirname, "dist", "index.html");
 let devServerProcess = null;
 
-function getBaseDataDir() {
+function getDefaultDataDir() {
   if (app.isPackaged) {
     return path.join(app.getPath("userData"), "data");
   }
   return path.join(process.cwd(), "data");
 }
 
-function getYearDataFile(year) {
-  return path.join(getBaseDataDir(), `Compta_${year}.json`);
+function getSettingsFile() {
+  return path.join(getDefaultDataDir(), "settings.json");
 }
 
-function getSettingsFile() {
-  return path.join(getBaseDataDir(), "settings.json");
+async function getActiveDataDir() {
+  const fallback = getDefaultDataDir();
+  try {
+    const settingsFile = getSettingsFile();
+    if (!fs.existsSync(settingsFile)) return fallback;
+    const raw = await fsp.readFile(settingsFile, "utf-8");
+    const parsed = JSON.parse(raw);
+    const dataPath = parsed?.dataPath;
+    if (typeof dataPath === "string" && dataPath.trim()) {
+      return dataPath.trim();
+    }
+  } catch (err) {
+    console.error("Failed to read data path from settings:", err);
+  }
+  return fallback;
+}
+
+async function getYearDataFile(year) {
+  const baseDir = await getActiveDataDir();
+  return path.join(baseDir, `Compta_${year}.json`);
 }
 
 function getDefaultSettings() {
@@ -36,8 +54,14 @@ function getDefaultSettings() {
   };
 }
 
+async function ensureSettingsDir() {
+  const dataDir = getDefaultDataDir();
+  await fsp.mkdir(dataDir, { recursive: true });
+  return dataDir;
+}
+
 async function ensureDataDir() {
-  const dataDir = getBaseDataDir();
+  const dataDir = await getActiveDataDir();
   await fsp.mkdir(dataDir, { recursive: true });
   return dataDir;
 }
@@ -124,7 +148,11 @@ function startViteDevServer() {
 
 async function loadRenderer(win) {
   try {
-    if (process.env.VITE_DEV_SERVER_URL) {
+    const shouldUseDevServer =
+      !app.isPackaged || process.env.VITE_DEV_SERVER_URL;
+
+    if (shouldUseDevServer) {
+      startViteDevServer();
       await waitForUrl(DEV_SERVER_URL);
       await win.loadURL(DEV_SERVER_URL);
       return;
@@ -162,9 +190,6 @@ async function createWindow() {
   });
 
   win.setMenu(null);
-  if (app.isPackaged) {
-    win.webContents.openDevTools({ mode: "detach" });
-  }
 
   await loadRenderer(win);
 
@@ -198,7 +223,7 @@ function configureAutoUpdates(win) {
 app.whenReady().then(() => {
   ipcMain.handle("transactions:load", async () => {
     try {
-      const dataDir = getBaseDataDir();
+      const dataDir = await getActiveDataDir();
       if (!fs.existsSync(dataDir)) return [];
       const entries = await fsp.readdir(dataDir);
       const files = entries.filter((name) => /^Compta_\d{4}\.json$/i.test(name));
@@ -234,7 +259,7 @@ app.whenReady().then(() => {
       const years = Object.keys(byYear);
       if (years.length === 0) {
         const year = new Date().getFullYear();
-        const dataFile = getYearDataFile(year);
+        const dataFile = await getYearDataFile(year);
         const output = { year, months: {} };
         await fsp.writeFile(dataFile, JSON.stringify(output, null, 2), "utf-8");
         return { ok: true };
@@ -243,7 +268,7 @@ app.whenReady().then(() => {
       await Promise.all(
         years.map(async (yearKey) => {
           const year = Number(yearKey);
-          const dataFile = getYearDataFile(year);
+          const dataFile = await getYearDataFile(year);
           const months = groupByMonth(byYear[yearKey]);
           const output = { year, months };
           await fsp.writeFile(
@@ -262,7 +287,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle("settings:load", async () => {
     try {
-      await ensureDataDir();
+      await ensureSettingsDir();
       const settingsFile = getSettingsFile();
       if (!fs.existsSync(settingsFile)) {
         const defaults = getDefaultSettings();
@@ -294,7 +319,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle("settings:save", async (_event, settings) => {
     try {
-      await ensureDataDir();
+      await ensureSettingsDir();
       const settingsFile = getSettingsFile();
       const payload =
         settings && typeof settings === "object"
@@ -310,6 +335,76 @@ app.whenReady().then(() => {
       console.error("Failed to save settings:", err);
       return { ok: false };
     }
+  });
+
+  ipcMain.handle("data-path:get", async () => {
+    const defaultPath = getDefaultDataDir();
+    const currentPath = await getActiveDataDir();
+    const isCustom = currentPath !== defaultPath;
+    return { defaultPath, currentPath, isCustom };
+  });
+
+  ipcMain.handle("data-path:select", async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ["openDirectory", "createDirectory"],
+    });
+    if (result.canceled || !result.filePaths?.length) {
+      return null;
+    }
+    const selected = result.filePaths[0];
+    try {
+      await ensureSettingsDir();
+      const settingsFile = getSettingsFile();
+      let settings = getDefaultSettings();
+      if (fs.existsSync(settingsFile)) {
+        const raw = await fsp.readFile(settingsFile, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          settings = { ...settings, ...parsed };
+        }
+      }
+      settings.dataPath = selected;
+      await fsp.writeFile(
+        settingsFile,
+        JSON.stringify(settings, null, 2),
+        "utf-8"
+      );
+    } catch (err) {
+      console.error("Failed to save data path:", err);
+    }
+    const defaultPath = getDefaultDataDir();
+    return {
+      defaultPath,
+      currentPath: selected,
+      isCustom: selected !== defaultPath,
+    };
+  });
+
+  ipcMain.handle("data-path:reset", async () => {
+    try {
+      await ensureSettingsDir();
+      const settingsFile = getSettingsFile();
+      let settings = getDefaultSettings();
+      if (fs.existsSync(settingsFile)) {
+        const raw = await fsp.readFile(settingsFile, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          settings = { ...settings, ...parsed };
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(settings, "dataPath")) {
+        delete settings.dataPath;
+      }
+      await fsp.writeFile(
+        settingsFile,
+        JSON.stringify(settings, null, 2),
+        "utf-8"
+      );
+    } catch (err) {
+      console.error("Failed to reset data path:", err);
+    }
+    const defaultPath = getDefaultDataDir();
+    return { defaultPath, currentPath: defaultPath, isCustom: false };
   });
 
   createWindow();

@@ -19,6 +19,63 @@
   gap: 12px;
 }
 
+.account-path-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.account-path-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.account-path-title {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.account-path-value {
+  font-size: 0.9rem;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.account-path-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.account-path-actions button {
+  border-radius: 999px;
+  padding: 4px 10px;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  background: #ffffff;
+  color: #1d4ed8;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.account-path-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.account-path-actions .account-path-reset {
+  border-color: rgba(148, 163, 184, 0.35);
+  color: var(--ink);
+}
+
 .account-settings-label {
   display: flex;
   align-items: center;
@@ -266,4 +323,20 @@ body.theme-dark .account-actions .account-cancel {
 body.theme-dark .account-actions .account-delete {
   background: rgba(239, 68, 68, 0.2);
   color: #fecaca;
+}
+
+body.theme-dark .account-path-row {
+  background: rgba(15, 23, 42, 0.65);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+body.theme-dark .account-path-actions button {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #93c5fd;
+}
+
+body.theme-dark .account-path-actions .account-path-reset {
+  border-color: rgba(148, 163, 184, 0.35);
+  color: var(--ink);
 }

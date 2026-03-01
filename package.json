@@ -1,6 +1,6 @@
 {
   "name": "compta_app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "electron.cjs",
   "repository": {
@@ -44,7 +44,10 @@
       "assets/**"
     ],
     "win": {
-      "target": "nsis",
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "assets/compta_app_logo.ico"
     },
     "publish": [
