@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld("comptaApi", {
   getDataPath: () => ipcRenderer.invoke("data-path:get"),
   selectDataPath: () => ipcRenderer.invoke("data-path:select"),
   resetDataPath: () => ipcRenderer.invoke("data-path:reset"),
+  openDataPath: () => ipcRenderer.invoke("data-path:open"),
   onUpdateStatus: (callback) => {
     const listener = (_event, payload) => callback?.(payload);
     ipcRenderer.on("update:status", listener);

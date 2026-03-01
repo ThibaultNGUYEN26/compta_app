@@ -30,6 +30,7 @@ export default function TransactionForm({
   selectedCurrentAccount,
   categories = DEFAULT_CATEGORIES,
   language = "fr",
+  defaultDate,
 }) {
   const nameInputRef = useRef(null);
   const labels = {
@@ -96,7 +97,10 @@ export default function TransactionForm({
       },
     },
   };
-  const t = labels[language] || labels.fr;
+  const t = useMemo(
+    () => labels[language] || labels.fr,
+    [language]
+  );
 
   const today = new Date().toISOString().slice(0, 10);
   const safeInitial = initialValues || {};
@@ -116,9 +120,10 @@ export default function TransactionForm({
         mainItems.push(item);
       }
     });
+    const labelsMap = (labels[language] || labels.fr).categories || {};
     mainItems.sort((a, b) => {
-      const labelA = t.categories?.[a] || String(a);
-      const labelB = t.categories?.[b] || String(b);
+      const labelA = labelsMap[a] || String(a);
+      const labelB = labelsMap[b] || String(b);
       return labelA.localeCompare(labelB, undefined, { sensitivity: "base" });
     });
     const orderedTail = tailOrder
@@ -129,7 +134,7 @@ export default function TransactionForm({
       )
       .filter(Boolean);
     return [...mainItems, ...orderedTail];
-  }, [categories, t.categories]);
+  }, [categories, language]);
   const [category, setCategory] = useState(categoryOptions[0] || "Other");
   const [type, setType] = useState("expense");
   const [isPrelevement, setIsPrelevement] = useState(false);
@@ -163,7 +168,7 @@ export default function TransactionForm({
       setCategory(categoryOptions[0] || "Other");
       setType("expense");
       setIsPrelevement(false);
-      setDate(today);
+      setDate(defaultDate || today);
       setSavingAccount(savingAccounts[0] || "");
       setTransferAccount(currentAccounts[0] || "");
       setCurrentAccount(
@@ -213,7 +218,14 @@ export default function TransactionForm({
     selectedCurrentAccount,
     categoryOptions,
     today,
+    defaultDate,
   ]);
+
+  useEffect(() => {
+    if (initialValues) return;
+    if (!defaultDate) return;
+    setDate(defaultDate);
+  }, [defaultDate, initialValues]);
 
   useEffect(() => {
     const handleOutside = (event) => {

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const { spawn } = require("child_process");
 const fs = require("fs");
@@ -424,6 +424,18 @@ app.whenReady().then(() => {
     }
     const defaultPath = getDefaultDataDir();
     return { defaultPath, currentPath: defaultPath, isCustom: false };
+  });
+
+  ipcMain.handle("data-path:open", async () => {
+    try {
+      const dir = await getActiveDataDir();
+      await ensureDataDir();
+      await shell.openPath(dir);
+      return { ok: true, path: dir };
+    } catch (err) {
+      console.error("Failed to open data path:", err);
+      return { ok: false };
+    }
   });
 
   ipcMain.handle("app:getVersion", async () => app.getVersion());

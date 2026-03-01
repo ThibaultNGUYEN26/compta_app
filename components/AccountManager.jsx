@@ -11,6 +11,7 @@ export default function AccountManager({
   dataPathInfo,
   onSelectDataPath,
   onResetDataPath,
+  onOpenDataPath,
   appVersion = "-",
   onAddCurrent,
   onAddSaving,
@@ -49,6 +50,7 @@ export default function AccountManager({
       dark: "Sombre",
       dataPath: "Dossier des donnees",
       changePath: "Changer",
+      openPath: "Ouvrir",
       resetPath: "Reinitialiser",
       version: "Version",
       categories: {
@@ -94,6 +96,7 @@ export default function AccountManager({
       dark: "Dark",
       dataPath: "Data folder",
       changePath: "Change",
+      openPath: "Open",
       resetPath: "Reset",
       version: "Version",
       categories: {
@@ -227,6 +230,9 @@ export default function AccountManager({
         <div className="account-path-actions">
           <button type="button" onClick={onSelectDataPath}>
             {t.changePath}
+          </button>
+          <button type="button" onClick={onOpenDataPath}>
+            {t.openPath}
           </button>
           <button
             type="button"

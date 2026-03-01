@@ -57,6 +57,8 @@ export default function App() {
   const [currentAccountOpen, setCurrentAccountOpen] = useState(false);
   const currentAccountRef = React.useRef(null);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [recentScope, setRecentScope] = useState("all");
+  const [recentMonth, setRecentMonth] = useState(new Date().getMonth());
 
   const settingsLabels = {
     fr: { title: "Comptes", close: "Fermer" },
@@ -85,14 +87,30 @@ export default function App() {
       newTransaction: "Nouvelle transaction",
       account: "Compte",
       recentActivity: "Activité récente",
+      recentAll: "Tout",
+      recentMonth: "Mois",
     },
     en: {
       newTransaction: "New transaction",
       account: "Account",
       recentActivity: "Recent activity",
+      recentAll: "All",
+      recentMonth: "Month",
     },
   };
   const homeText = homeLabels[language] || homeLabels.fr;
+  const monthLabels = React.useMemo(() => {
+    const locale = language === "en" ? "en-US" : "fr-FR";
+    return Array.from({ length: 12 }, (_, index) =>
+      new Date(2024, index, 1).toLocaleString(locale, { month: "long" })
+    );
+  }, [language]);
+  const formatLocalDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
   const headerLabels = {
     fr: { personalFinance: "Finances personnelles" },
@@ -218,6 +236,11 @@ export default function App() {
       }
       return next;
     });
+  };
+
+  const handleOpenDataPath = async () => {
+    if (!window.comptaApi?.openDataPath) return;
+    await window.comptaApi.openDataPath();
   };
 
   useEffect(() => {
@@ -552,6 +575,25 @@ export default function App() {
     return sortCategories(Array.from(set));
   }, [categories, transactions, sortCategories]);
 
+  const recentTransactions = React.useMemo(() => {
+    if (recentScope === "all") return transactions;
+    const now = new Date();
+    const year = now.getFullYear();
+    return transactions.filter((t) => {
+      const dt = new Date(t.date);
+      if (Number.isNaN(dt.getTime())) return false;
+      return dt.getFullYear() === year && dt.getMonth() === recentMonth;
+    });
+  }, [recentScope, recentMonth, transactions]);
+
+  const recentDefaultDate = React.useMemo(() => {
+    if (recentScope !== "month") return null;
+    const now = new Date();
+    const year = now.getFullYear();
+    const firstDay = new Date(year, recentMonth, 1);
+    return formatLocalDate(firstDay);
+  }, [recentScope, recentMonth]);
+
   const handleUpdate = (transaction) => {
     const updated = transactions.map((item) =>
       item.id === transaction.id ? { ...item, ...transaction } : item
@@ -723,6 +765,7 @@ export default function App() {
               dataPathInfo={dataPathInfo}
               onSelectDataPath={handleSelectDataPath}
               onResetDataPath={handleResetDataPath}
+              onOpenDataPath={handleOpenDataPath}
               onAddCurrent={addCurrentAccount}
               onAddSaving={addSavingAccount}
               onRenameCurrent={renameCurrentAccount}
@@ -790,12 +833,47 @@ export default function App() {
               selectedCurrentAccount={selectedCurrentAccount}
               categories={mergedCategories}
               language={language}
+              defaultDate={recentDefaultDate}
             />
           </section>
           <section className="panel panel-list">
-            <h2 className="panel-title">{homeText.recentActivity}</h2>
+            <div className="panel-title-row">
+              <h2 className="panel-title">{homeText.recentActivity}</h2>
+              <div className="panel-toggle">
+                <button
+                  type="button"
+                  className={`panel-toggle-btn${recentScope === "all" ? " is-active" : ""}`}
+                  onClick={() => setRecentScope("all")}
+                  aria-pressed={recentScope === "all"}
+                >
+                  {homeText.recentAll}
+                </button>
+                <button
+                  type="button"
+                  className={`panel-toggle-btn${recentScope === "month" ? " is-active" : ""}`}
+                  onClick={() => setRecentScope("month")}
+                  aria-pressed={recentScope === "month"}
+                >
+                  {homeText.recentMonth}
+                </button>
+              </div>
+            </div>
+            {recentScope === "month" && (
+              <div className="panel-month">
+                <select
+                  value={recentMonth}
+                  onChange={(e) => setRecentMonth(Number(e.target.value))}
+                >
+                  {monthLabels.map((label, index) => (
+                    <option key={label} value={index}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <TransactionList
-              transactions={transactions}
+              transactions={recentTransactions}
               limit={5}
               onUpdate={handleUpdate}
               onDelete={handleDelete}
