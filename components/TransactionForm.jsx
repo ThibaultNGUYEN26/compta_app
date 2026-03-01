@@ -18,6 +18,7 @@ const DEFAULT_CATEGORIES = [
   "Transfer",
   "Account Transfer",
   "Saving",
+  "Shopping",
 ];
 
 export default function TransactionForm({
@@ -55,6 +56,7 @@ export default function TransactionForm({
         "Education/Work": "Éducation/Travail",
         "Gifts/Donations": "Cadeaux/Donations",
         Salary: "Salaire",
+        Shopping: "Shopping",
         Other: "Autre",
         Transfer: "Virement",
         "Account Transfer": "Transfère",
@@ -85,6 +87,7 @@ export default function TransactionForm({
         "Education/Work": "Education/Work",
         "Gifts/Donations": "Gifts/Donations",
         Salary: "Salary",
+        Shopping: "Shopping",
         Other: "Other",
         Transfer: "Transfer",
         "Account Transfer": "Account Transfer",

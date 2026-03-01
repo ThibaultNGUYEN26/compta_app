@@ -51,6 +51,25 @@ export default function AccountManager({
       changePath: "Changer",
       resetPath: "Reinitialiser",
       version: "Version",
+      categories: {
+        Restaurant: "Restaurant",
+        Groceries: "Courses",
+        Transport: "Transport",
+        Bills: "Factures",
+        Rent: "Loyer",
+        Health: "Sante",
+        Entertainment: "Loisirs",
+        Travel: "Voyage",
+        Subscriptions: "Abonnements",
+        "Education/Work": "Education/Travail",
+        "Gifts/Donations": "Cadeaux/Donations",
+        Salary: "Salaire",
+        Shopping: "Shopping",
+        Other: "Autre",
+        Transfer: "Virement",
+        "Account Transfer": "Transfere",
+        Saving: "Epargne",
+      },
     },
     en: {
       subtitle: "Manage your current and saving accounts.",
@@ -77,6 +96,25 @@ export default function AccountManager({
       changePath: "Change",
       resetPath: "Reset",
       version: "Version",
+      categories: {
+        Restaurant: "Restaurant",
+        Groceries: "Groceries",
+        Transport: "Transport",
+        Bills: "Bills",
+        Rent: "Rent",
+        Health: "Health",
+        Entertainment: "Entertainment",
+        Travel: "Travel",
+        Subscriptions: "Subscriptions",
+        "Education/Work": "Education/Work",
+        "Gifts/Donations": "Gifts/Donations",
+        Salary: "Salary",
+        Shopping: "Shopping",
+        Other: "Other",
+        Transfer: "Transfer",
+        "Account Transfer": "Account Transfer",
+        Saving: "Saving",
+      },
     },
   };
 
@@ -367,7 +405,9 @@ export default function AccountManager({
           <h3>{t.categoryTitle}</h3>
           <p className="account-subtitle">{t.categoriesSubtitle}</p>
           <ul>
-            {categories.map((name, index) => (
+            {categories.map((name, index) => {
+              const displayName = t.categories?.[name] || name;
+              return (
               <li
                 key={`${name}-${index}`}
                 className={`account-item${editingCategoryIndex === index ? " is-editing" : ""}`}
@@ -423,7 +463,7 @@ export default function AccountManager({
                   </>
                 ) : (
                   <>
-                    <span>{name}</span>
+                    <span>{displayName}</span>
                     <button
                       type="button"
                       className="account-edit"
@@ -437,7 +477,8 @@ export default function AccountManager({
                   </>
                 )}
               </li>
-            ))}
+            );
+            })}
           </ul>
           <form className="account-form" onSubmit={submitCategory}>
             <input

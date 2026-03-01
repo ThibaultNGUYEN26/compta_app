@@ -1,6 +1,7 @@
 __pycache__/
 # data/settings.json
 data/Compta_*.json
+bugs_to_fix.txt
 
 # =========================
 # Node / Electron

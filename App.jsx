@@ -22,6 +22,7 @@ const DEFAULT_CATEGORIES = [
   "Transfer",
   "Account Transfer",
   "Saving",
+  "Shopping",
   "Other",
 ];
 
@@ -152,6 +153,7 @@ export default function App() {
         const merged = new Set(savedCategories);
         merged.add("Transfer");
         merged.add("Account Transfer");
+        merged.add("Shopping");
         setCategories(Array.from(merged));
       } else {
         setCategories(DEFAULT_CATEGORIES);
@@ -342,19 +344,88 @@ export default function App() {
     });
   };
 
+  const syncTransactionsAfterRename = (prevName, nextName, type) => {
+    if (!prevName || prevName === nextName) return;
+    let changed = false;
+    const updated = transactions.map((item) => {
+      let touched = false;
+      const next = { ...item };
+      if (type === "current") {
+        if (next.currentAccount === prevName) {
+          next.currentAccount = nextName;
+          touched = true;
+        }
+        if (next.transferAccount === prevName) {
+          next.transferAccount = nextName;
+          touched = true;
+        }
+        if (
+          next.accountName === prevName &&
+          (next.accountType === "current" || next.category !== "Saving")
+        ) {
+          next.accountName = nextName;
+          touched = true;
+        }
+      } else if (type === "saving") {
+        if (next.savingAccount === prevName) {
+          next.savingAccount = nextName;
+          touched = true;
+        }
+        if (
+          next.accountName === prevName &&
+          (next.accountType === "saving" || next.category === "Saving")
+        ) {
+          next.accountName = nextName;
+          touched = true;
+        }
+      }
+      if (touched) changed = true;
+      return touched ? next : item;
+    });
+
+    if (!changed) return;
+    setTransactions(updated);
+    if (window.comptaApi?.saveTransactions) {
+      window.comptaApi
+        .saveTransactions(updated)
+        .then(() => window.comptaApi?.loadTransactions?.())
+        .then((loaded) => {
+          if (Array.isArray(loaded)) {
+            setTransactions(loaded);
+          }
+        })
+        .catch(() => {});
+    }
+  };
+
   const renameCurrentAccount = (index, nextName) => {
+    const prevName = currentAccounts[index];
+    if (!prevName || prevName === nextName) return;
     setCurrentAccounts((prev) =>
       prev.map((name, i) => (i === index ? nextName : name))
     );
+    setSavingLinks((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((savingName) => {
+        if (next[savingName] === prevName) {
+          next[savingName] = nextName;
+        }
+      });
+      return next;
+    });
+    setSelectedCurrentAccount((prev) =>
+      prev === prevName ? nextName : prev
+    );
+    syncTransactionsAfterRename(prevName, nextName, "current");
   };
 
   const renameSavingAccount = (index, nextName) => {
+    const prevName = savingAccounts[index];
+    if (!prevName || prevName === nextName) return;
     setSavingAccounts((prev) =>
       prev.map((name, i) => (i === index ? nextName : name))
     );
     setSavingLinks((prev) => {
-      const prevName = savingAccounts[index];
-      if (!prevName || prevName === nextName) return prev;
       const next = { ...prev };
       if (Object.prototype.hasOwnProperty.call(next, prevName)) {
         next[nextName] = next[prevName];
@@ -364,6 +435,7 @@ export default function App() {
       }
       return next;
     });
+    syncTransactionsAfterRename(prevName, nextName, "saving");
   };
 
   const deleteCurrentAccount = (index) => {
@@ -409,7 +481,10 @@ export default function App() {
     setCategories((prev) => {
       const trimmed = name.trim();
       if (!trimmed) return prev;
-      if (prev.includes(trimmed)) return prev;
+      const normalized = trimmed.toLowerCase();
+      if (prev.some((item) => item.toLowerCase() === normalized)) {
+        return prev;
+      }
       return [...prev, trimmed];
     });
   };
@@ -418,7 +493,16 @@ export default function App() {
     setCategories((prev) => {
       const trimmed = nextName.trim();
       if (!trimmed) return prev;
-      if (prev.includes(trimmed) && prev[index] !== trimmed) return prev;
+      const normalized = trimmed.toLowerCase();
+      const current = prev[index] || "";
+      if (
+        prev.some(
+          (item, i) => i !== index && item.toLowerCase() === normalized
+        )
+      ) {
+        return prev;
+      }
+      if (current === trimmed) return prev;
       return prev.map((name, i) => (i === index ? trimmed : name));
     });
   };
@@ -426,6 +510,29 @@ export default function App() {
   const deleteCategory = (index) => {
     setCategories((prev) => prev.filter((_, i) => i !== index));
   };
+
+  const sortCategories = React.useCallback((list) => {
+    const items = Array.isArray(list) ? [...list] : [];
+    const otherIndex = items.findIndex(
+      (name) => String(name).toLowerCase() === "other"
+    );
+    let other = null;
+    if (otherIndex !== -1) {
+      other = items.splice(otherIndex, 1)[0];
+    }
+    items.sort((a, b) =>
+      String(a).localeCompare(String(b), undefined, { sensitivity: "base" })
+    );
+    if (other !== null) items.push(other);
+    return items;
+  }, []);
+
+  const sortedCategories = React.useMemo(() => {
+    const base = Array.isArray(categories) && categories.length
+      ? categories
+      : DEFAULT_CATEGORIES;
+    return sortCategories(base);
+  }, [categories, sortCategories]);
 
   const mergedCategories = React.useMemo(() => {
     const base = Array.isArray(categories) && categories.length
@@ -435,8 +542,8 @@ export default function App() {
     transactions.forEach((t) => {
       if (t.category) set.add(t.category);
     });
-    return Array.from(set);
-  }, [categories, transactions]);
+    return sortCategories(Array.from(set));
+  }, [categories, transactions, sortCategories]);
 
   const handleUpdate = (transaction) => {
     const updated = transactions.map((item) =>
@@ -583,7 +690,6 @@ export default function App() {
           className="modal-overlay"
           role="dialog"
           aria-modal="true"
-          onClick={() => setShowAccounts(false)}
         >
           <div
             className="modal-card panel"
@@ -603,7 +709,7 @@ export default function App() {
               currentAccounts={currentAccounts}
               savingAccounts={savingAccounts}
               savingLinks={savingLinks}
-              categories={categories}
+              categories={sortedCategories}
               language={language}
               theme={theme}
               appVersion={appVersion}

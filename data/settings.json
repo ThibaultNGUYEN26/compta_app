@@ -3,7 +3,7 @@
   "theme": "light",
   "accounts": {
     "current": [
-      "Current account"
+      "Truc"
     ],
     "saving": [],
     "savingLinks": {}
@@ -24,6 +24,7 @@
     "Transfer",
     "Account Transfer",
     "Saving",
+    "Shopping",
     "Other"
   ]
 }
